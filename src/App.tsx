@@ -1,7 +1,15 @@
+import { Route, Routes } from "react-router-dom";
+import Sidebar from "./ui/_sidebar";
+import BihonPage from "./pages/bh";
+import Snackfood from "./pages/sf";
+
 function App() {
   return (
-    <h1>dajkgbduia</h1>
-  )
+    <Routes>
+      <Route path="/bihon" element={<BihonPage />} />
+      <Route path="/snackfood" element={<Snackfood />} />
+    </Routes>
+  );
 }
 
-export default App
+export default App;
