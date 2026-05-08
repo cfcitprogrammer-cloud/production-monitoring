@@ -1,6 +1,9 @@
 import { Tabs } from "@heroui/react";
 import Page from "../ui/_page";
 import BHMainForm from "../forms/bh/main";
+import BHCookingForm from "../forms/bh/cooking";
+import BHPackingForm from "../forms/bh/packing";
+import BHfgForm from "../forms/bh/fg";
 
 export default function BihonPage() {
   return (
@@ -30,13 +33,13 @@ export default function BihonPage() {
           <BHMainForm />
         </Tabs.Panel>
         <Tabs.Panel className="pt-4" id="cooking">
-          <p>cooking</p>
+          <BHCookingForm />
         </Tabs.Panel>
         <Tabs.Panel className="pt-4" id="packing">
-          <p>packing</p>
+          <BHPackingForm />
         </Tabs.Panel>
         <Tabs.Panel className="pt-4" id="fg">
-          <p>fg</p>
+          <BHfgForm />
         </Tabs.Panel>
       </Tabs>
     </Page>

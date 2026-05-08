@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   Autocomplete,
+  EmptyState,
   Label,
   ListBox,
   SearchField,
@@ -14,7 +15,7 @@ import {
 import type { Key } from "@heroui/react";
 import { supabase } from "../../utils/supabase";
 
-type CookingItem = {
+type FryingItem = {
   item_code: string;
   weight: number;
 };
@@ -38,7 +39,7 @@ type ShiftOption = {
   uid: string;
 };
 
-export default function BHCookingForm() {
+export default function SFFryingForm() {
   const { contains } = useFilter({ sensitivity: "base" });
 
   const [loading, setLoading] = useState(true);
@@ -52,10 +53,10 @@ export default function BHCookingForm() {
   const [selectedKey, setSelectedKey] = useState<Key | null>(null);
   const [weight, setWeight] = useState("");
 
-  const [items, setItems] = useState<CookingItem[]>([]);
+  const [items, setItems] = useState<FryingItem[]>([]);
 
   // ======================
-  // FETCH
+  // DATE HELPERS
   // ======================
 
   const today = useMemo(() => formatDate(new Date()), []);
@@ -72,15 +73,19 @@ export default function BHCookingForm() {
     return `${yyyy}-${mm}-${dd}`;
   }
 
+  // ======================
+  // FETCH DATA
+  // ======================
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
 
       const [codesRes, overviewRes] = await Promise.all([
         supabase
-          .from("bihon_sku")
+          .from("sf_sku")
           .select("id, item_code")
-          .eq("type", "cooking_mix")
+          .eq("type", "frying")
           .order("item_code"),
 
         supabase
@@ -98,6 +103,10 @@ export default function BHCookingForm() {
     fetchData();
   }, [today, yesterday]);
 
+  // ======================
+  // SHIFT OPTIONS
+  // ======================
+
   const shiftOptions: ShiftOption[] = overviewRows.map((row) => ({
     id: `${row.prod_date}-${row.shift}`,
     label: `${row.prod_date} ${row.shift.toUpperCase()}`,
@@ -105,6 +114,10 @@ export default function BHCookingForm() {
     shift: row.shift,
     uid: row.uid,
   }));
+
+  // ======================
+  // ITEM OPTIONS
+  // ======================
 
   const itemsList = itemCodes.map((i) => ({
     id: i.item_code,
@@ -135,7 +148,7 @@ export default function BHCookingForm() {
   };
 
   // ======================
-  // REMOVE ITEM (NEW)
+  // REMOVE ITEM
   // ======================
 
   const removeItem = (index: number) => {
@@ -146,7 +159,7 @@ export default function BHCookingForm() {
   // SUBMIT
   // ======================
 
-  async function submitCookingForm(e: React.FormEvent<HTMLFormElement>) {
+  async function submitForm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     if (!selectedShift) {
@@ -168,14 +181,14 @@ export default function BHCookingForm() {
         prod_id: selectedShift.uid,
       }));
 
-      const { error } = await supabase.from("bh_cooking").insert(payload);
+      const { error } = await supabase.from("sf_frying").insert(payload);
 
       if (error) {
         alert(error.message);
         return;
       }
 
-      alert("Cooking form submitted!");
+      alert("Frying form submitted!");
 
       setItems([]);
       setSelectedKey(null);
@@ -191,7 +204,7 @@ export default function BHCookingForm() {
   }
 
   return (
-    <form className="space-y-6" onSubmit={submitCookingForm}>
+    <form className="space-y-6" onSubmit={submitForm}>
       {/* SHIFT */}
       <div>
         <Label className="mb-2 block">Select Production Shift</Label>
@@ -221,7 +234,7 @@ export default function BHCookingForm() {
         </Select>
       </div>
 
-      {/* INPUT ROW (RESPONSIVE FIXED) */}
+      {/* INPUT ROW */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="w-full sm:w-[280px]">
           <Label>Item Code</Label>
@@ -253,6 +266,7 @@ export default function BHCookingForm() {
 
         <div className="w-full sm:w-[200px]">
           <Label>Weight</Label>
+
           <Input
             type="number"
             value={weight}
@@ -272,20 +286,18 @@ export default function BHCookingForm() {
             key={i}
             className="flex flex-col gap-2 rounded border p-3 sm:flex-row sm:items-end"
           >
-            {/* ITEM CODE (READ ONLY FIXED) */}
             <Input
               value={item.item_code}
               className="w-full sm:w-[200px]"
               disabled
             />
 
-            {/* WEIGHT */}
             <Input
               value={String(item.weight)}
               className="w-full sm:w-[120px]"
+              disabled
             />
 
-            {/* REMOVE BUTTON */}
             <Button
               type="button"
               className="w-full sm:w-auto"
@@ -298,7 +310,7 @@ export default function BHCookingForm() {
       </div>
 
       {/* SUBMIT */}
-      <Button type="submit">Submit Cooking Form</Button>
+      <Button type="submit">Submit Frying Form</Button>
     </form>
   );
 }

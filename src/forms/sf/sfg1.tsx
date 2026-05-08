@@ -14,9 +14,9 @@ import {
 import type { Key } from "@heroui/react";
 import { supabase } from "../../utils/supabase";
 
-type CookingItem = {
+type BlendingItem = {
   item_code: string;
-  weight: number;
+  usage: number;
 };
 
 type ItemCode = {
@@ -38,7 +38,7 @@ type ShiftOption = {
   uid: string;
 };
 
-export default function BHCookingForm() {
+export default function SFBlendingForm() {
   const { contains } = useFilter({ sensitivity: "base" });
 
   const [loading, setLoading] = useState(true);
@@ -50,12 +50,12 @@ export default function BHCookingForm() {
   const [selectedShift, setSelectedShift] = useState<ShiftOption | null>(null);
 
   const [selectedKey, setSelectedKey] = useState<Key | null>(null);
-  const [weight, setWeight] = useState("");
+  const [usage, setUsage] = useState("");
 
-  const [items, setItems] = useState<CookingItem[]>([]);
+  const [items, setItems] = useState<BlendingItem[]>([]);
 
   // ======================
-  // FETCH
+  // DATE HELPERS
   // ======================
 
   const today = useMemo(() => formatDate(new Date()), []);
@@ -72,15 +72,19 @@ export default function BHCookingForm() {
     return `${yyyy}-${mm}-${dd}`;
   }
 
+  // ======================
+  // FETCH DATA
+  // ======================
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
 
       const [codesRes, overviewRes] = await Promise.all([
         supabase
-          .from("bihon_sku")
+          .from("sf_sku")
           .select("id, item_code")
-          .eq("type", "cooking_mix")
+          .eq("type", "blending")
           .order("item_code"),
 
         supabase
@@ -98,6 +102,10 @@ export default function BHCookingForm() {
     fetchData();
   }, [today, yesterday]);
 
+  // ======================
+  // SHIFT OPTIONS
+  // ======================
+
   const shiftOptions: ShiftOption[] = overviewRows.map((row) => ({
     id: `${row.prod_date}-${row.shift}`,
     label: `${row.prod_date} ${row.shift.toUpperCase()}`,
@@ -105,6 +113,10 @@ export default function BHCookingForm() {
     shift: row.shift,
     uid: row.uid,
   }));
+
+  // ======================
+  // ITEM OPTIONS
+  // ======================
 
   const itemsList = itemCodes.map((i) => ({
     id: i.item_code,
@@ -116,7 +128,7 @@ export default function BHCookingForm() {
   // ======================
 
   const addItem = () => {
-    if (!selectedKey || !weight) return;
+    if (!selectedKey || !usage) return;
 
     const code = String(selectedKey);
 
@@ -126,16 +138,16 @@ export default function BHCookingForm() {
       ...prev,
       {
         item_code: code,
-        weight: Number(weight),
+        usage: Number(usage),
       },
     ]);
 
     setSelectedKey(null);
-    setWeight("");
+    setUsage("");
   };
 
   // ======================
-  // REMOVE ITEM (NEW)
+  // REMOVE ITEM
   // ======================
 
   const removeItem = (index: number) => {
@@ -146,7 +158,7 @@ export default function BHCookingForm() {
   // SUBMIT
   // ======================
 
-  async function submitCookingForm(e: React.FormEvent<HTMLFormElement>) {
+  async function submitForm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     if (!selectedShift) {
@@ -164,22 +176,22 @@ export default function BHCookingForm() {
     try {
       const payload = items.map((item) => ({
         item_code: item.item_code,
-        weight: item.weight,
+        usage: item.usage,
         prod_id: selectedShift.uid,
       }));
 
-      const { error } = await supabase.from("bh_cooking").insert(payload);
+      const { error } = await supabase.from("sf_blending").insert(payload);
 
       if (error) {
         alert(error.message);
         return;
       }
 
-      alert("Cooking form submitted!");
+      alert("Blending form submitted!");
 
       setItems([]);
       setSelectedKey(null);
-      setWeight("");
+      setUsage("");
       setSelectedShift(null);
     } finally {
       setSubmitting(false);
@@ -191,8 +203,8 @@ export default function BHCookingForm() {
   }
 
   return (
-    <form className="space-y-6" onSubmit={submitCookingForm}>
-      {/* SHIFT */}
+    <form className="space-y-6" onSubmit={submitForm}>
+      {/* SHIFT SELECT */}
       <div>
         <Label className="mb-2 block">Select Production Shift</Label>
 
@@ -221,7 +233,7 @@ export default function BHCookingForm() {
         </Select>
       </div>
 
-      {/* INPUT ROW (RESPONSIVE FIXED) */}
+      {/* INPUT ROW */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="w-full sm:w-[280px]">
           <Label>Item Code</Label>
@@ -252,11 +264,11 @@ export default function BHCookingForm() {
         </div>
 
         <div className="w-full sm:w-[200px]">
-          <Label>Weight</Label>
+          <Label>Usage</Label>
           <Input
             type="number"
-            value={weight}
-            onChange={(e) => setWeight(e.target.value)}
+            value={usage}
+            onChange={(e) => setUsage(e.target.value)}
           />
         </div>
 
@@ -272,20 +284,18 @@ export default function BHCookingForm() {
             key={i}
             className="flex flex-col gap-2 rounded border p-3 sm:flex-row sm:items-end"
           >
-            {/* ITEM CODE (READ ONLY FIXED) */}
             <Input
               value={item.item_code}
               className="w-full sm:w-[200px]"
               disabled
             />
 
-            {/* WEIGHT */}
             <Input
-              value={String(item.weight)}
+              value={String(item.usage)}
               className="w-full sm:w-[120px]"
+              disabled
             />
 
-            {/* REMOVE BUTTON */}
             <Button
               type="button"
               className="w-full sm:w-auto"
@@ -298,7 +308,7 @@ export default function BHCookingForm() {
       </div>
 
       {/* SUBMIT */}
-      <Button type="submit">Submit Cooking Form</Button>
+      <Button type="submit">Submit Blending Form</Button>
     </form>
   );
 }

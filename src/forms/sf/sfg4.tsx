@@ -14,7 +14,7 @@ import {
 import type { Key } from "@heroui/react";
 import { supabase } from "../../utils/supabase";
 
-type CookingItem = {
+type FlavoringItem = {
   item_code: string;
   weight: number;
 };
@@ -38,7 +38,7 @@ type ShiftOption = {
   uid: string;
 };
 
-export default function BHCookingForm() {
+export default function SFFlavoringForm() {
   const { contains } = useFilter({ sensitivity: "base" });
 
   const [loading, setLoading] = useState(true);
@@ -52,10 +52,10 @@ export default function BHCookingForm() {
   const [selectedKey, setSelectedKey] = useState<Key | null>(null);
   const [weight, setWeight] = useState("");
 
-  const [items, setItems] = useState<CookingItem[]>([]);
+  const [items, setItems] = useState<FlavoringItem[]>([]);
 
   // ======================
-  // FETCH
+  // DATE
   // ======================
 
   const today = useMemo(() => formatDate(new Date()), []);
@@ -72,15 +72,19 @@ export default function BHCookingForm() {
     return `${yyyy}-${mm}-${dd}`;
   }
 
+  // ======================
+  // FETCH
+  // ======================
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
 
       const [codesRes, overviewRes] = await Promise.all([
         supabase
-          .from("bihon_sku")
+          .from("sf_sku")
           .select("id, item_code")
-          .eq("type", "cooking_mix")
+          .eq("type", "flavoring")
           .order("item_code"),
 
         supabase
@@ -134,10 +138,6 @@ export default function BHCookingForm() {
     setWeight("");
   };
 
-  // ======================
-  // REMOVE ITEM (NEW)
-  // ======================
-
   const removeItem = (index: number) => {
     setItems((prev) => prev.filter((_, i) => i !== index));
   };
@@ -146,11 +146,11 @@ export default function BHCookingForm() {
   // SUBMIT
   // ======================
 
-  async function submitCookingForm(e: React.FormEvent<HTMLFormElement>) {
+  async function submitFlavoringForm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     if (!selectedShift) {
-      alert("Select a shift");
+      alert("Select shift");
       return;
     }
 
@@ -168,14 +168,14 @@ export default function BHCookingForm() {
         prod_id: selectedShift.uid,
       }));
 
-      const { error } = await supabase.from("bh_cooking").insert(payload);
+      const { error } = await supabase.from("sf_flavoring").insert(payload);
 
       if (error) {
         alert(error.message);
         return;
       }
 
-      alert("Cooking form submitted!");
+      alert("Flavoring form submitted!");
 
       setItems([]);
       setSelectedKey(null);
@@ -191,7 +191,7 @@ export default function BHCookingForm() {
   }
 
   return (
-    <form className="space-y-6" onSubmit={submitCookingForm}>
+    <form className="space-y-6" onSubmit={submitFlavoringForm}>
       {/* SHIFT */}
       <div>
         <Label className="mb-2 block">Select Production Shift</Label>
@@ -221,7 +221,7 @@ export default function BHCookingForm() {
         </Select>
       </div>
 
-      {/* INPUT ROW (RESPONSIVE FIXED) */}
+      {/* INPUT */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="w-full sm:w-[280px]">
           <Label>Item Code</Label>
@@ -272,20 +272,17 @@ export default function BHCookingForm() {
             key={i}
             className="flex flex-col gap-2 rounded border p-3 sm:flex-row sm:items-end"
           >
-            {/* ITEM CODE (READ ONLY FIXED) */}
             <Input
               value={item.item_code}
               className="w-full sm:w-[200px]"
               disabled
             />
 
-            {/* WEIGHT */}
             <Input
               value={String(item.weight)}
               className="w-full sm:w-[120px]"
             />
 
-            {/* REMOVE BUTTON */}
             <Button
               type="button"
               className="w-full sm:w-auto"
@@ -298,7 +295,9 @@ export default function BHCookingForm() {
       </div>
 
       {/* SUBMIT */}
-      <Button type="submit">Submit Cooking Form</Button>
+      <Button type="submit" isDisabled={submitting}>
+        Submit Flavoring Form
+      </Button>
     </form>
   );
 }

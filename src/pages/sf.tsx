@@ -1,5 +1,12 @@
 import { Tabs } from "@heroui/react";
 import Page from "../ui/_page";
+import SFBlendingForm from "../forms/sf/sfg1";
+import SFPremixForm from "../forms/sf/sfg2";
+import SFMixForm from "../forms/sf/mix";
+import SFFryingForm from "../forms/sf/sfg3";
+import SFFlavoringForm from "../forms/sf/sfg4";
+import SFPieceForm from "../forms/sf/sfg5";
+import SFFGForm from "../forms/sf/fg";
 
 export default function Snackfood() {
   return (
@@ -41,22 +48,25 @@ export default function Snackfood() {
           <p>View your project overview and recent activity.</p>
         </Tabs.Panel>
         <Tabs.Panel className="pt-4" id="sfg1">
-          <p>Track your metrics and analyze performance data.</p>
+          <SFBlendingForm />
         </Tabs.Panel>
         <Tabs.Panel className="pt-4" id="sfg2">
-          <p>Generate and download detailed reports.</p>
+          <SFPremixForm />
+        </Tabs.Panel>
+        <Tabs.Panel className="pt-4" id="mix">
+          <SFMixForm />
         </Tabs.Panel>
         <Tabs.Panel className="pt-4" id="sfg3">
-          <p>Generate and download detailed reports.</p>
+          <SFFryingForm />
         </Tabs.Panel>
         <Tabs.Panel className="pt-4" id="sfg4">
-          <p>Generate and download detailed reports.</p>
+          <SFFlavoringForm />
         </Tabs.Panel>
         <Tabs.Panel className="pt-4" id="sfg5">
-          <p>Generate and download detailed reports.</p>
+          <SFPieceForm />
         </Tabs.Panel>
         <Tabs.Panel className="pt-4" id="fg">
-          <p>Generate and download detailed reports.</p>
+          <SFFGForm />
         </Tabs.Panel>
       </Tabs>
     </Page>
