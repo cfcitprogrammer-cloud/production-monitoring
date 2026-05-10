@@ -8,7 +8,7 @@ import BHfgForm from "../forms/bh/fg";
 export default function BihonPage() {
   return (
     <Page>
-      <Tabs>
+      <Tabs orientation="vertical">
         <Tabs.ListContainer>
           <Tabs.List aria-label="Options">
             <Tabs.Tab id="overview">

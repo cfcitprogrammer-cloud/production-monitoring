@@ -26,11 +26,9 @@ export default function Sidebar() {
     url: string;
   }[] = [
     { icon: ChartColumn, label: "Dashboard", url: "/" },
-    { icon: Flame, label: "Bihon", url: "/bihon" },
-    { icon: Box, label: "Canton", url: "/canton" },
-    { icon: Cup, label: "SF 1", url: "/sf1" },
-    { icon: Star, label: "SF 2", url: "/sf2" },
-    { icon: GraphNode, label: "Summary", url: "/summary"}
+    { icon: Flame, label: "Bihon/Canton", url: "/bihon" },
+    { icon: Cup, label: "Snackfood", url: "/snackfood" },
+    { icon: GraphNode, label: "Summary", url: "/summary" },
   ];
 
   return (

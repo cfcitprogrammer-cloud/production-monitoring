@@ -3,7 +3,7 @@ import Header from "./_header";
 
 export default function Page({ children }: { children: React.ReactNode }) {
   return (
-    <main className="h-screen bg-gray-100">
+    <main className="min-h-screen bg-gray-100">
       <Header>
         <Sidebar />
       </Header>

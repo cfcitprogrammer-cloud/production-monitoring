@@ -12,7 +12,7 @@ import SFMainForm from "../forms/sf/main";
 export default function Snackfood() {
   return (
     <Page>
-      <Tabs>
+      <Tabs orientation="vertical">
         <Tabs.ListContainer>
           <Tabs.List aria-label="Options">
             <Tabs.Tab id="overview">
@@ -29,7 +29,7 @@ export default function Snackfood() {
             </Tabs.Tab>
             <Tabs.Tab id="mix">
               Mixing
-            <Tabs.Indicator />
+              <Tabs.Indicator />
             </Tabs.Tab>
             <Tabs.Tab id="sfg3">
               Frying
