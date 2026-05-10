@@ -97,7 +97,7 @@ export default function SFFGForm() {
           .order("item_code"),
 
         supabase
-          .from("bh_overview")
+          .from("sf_overview")
           .select("uid, prod_date, shift")
           .in("prod_date", [today, yesterday]),
       ]);
@@ -176,7 +176,7 @@ export default function SFFGForm() {
     try {
       const payload = items.map((item) => ({
         item_code: item.itemCode,
-        quantity: Number(item.quantity),
+        qty: Number(item.quantity),
         unit: item.unit,
         prod_id: selectedShift.uid,
       }));

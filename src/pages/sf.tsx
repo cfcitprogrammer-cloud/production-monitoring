@@ -7,6 +7,7 @@ import SFFryingForm from "../forms/sf/sfg3";
 import SFFlavoringForm from "../forms/sf/sfg4";
 import SFPieceForm from "../forms/sf/sfg5";
 import SFFGForm from "../forms/sf/fg";
+import SFMainForm from "../forms/sf/main";
 
 export default function Snackfood() {
   return (
@@ -25,6 +26,10 @@ export default function Snackfood() {
             <Tabs.Tab id="sfg2">
               Premix
               <Tabs.Indicator />
+            </Tabs.Tab>
+            <Tabs.Tab id="mix">
+              Mixing
+            <Tabs.Indicator />
             </Tabs.Tab>
             <Tabs.Tab id="sfg3">
               Frying
@@ -45,7 +50,7 @@ export default function Snackfood() {
           </Tabs.List>
         </Tabs.ListContainer>
         <Tabs.Panel className="pt-4" id="overview">
-          <p>View your project overview and recent activity.</p>
+          <SFMainForm />
         </Tabs.Panel>
         <Tabs.Panel className="pt-4" id="sfg1">
           <SFBlendingForm />

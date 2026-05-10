@@ -1,258 +1,319 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-
-import { Label, Select, ListBox, Input, Button } from "@heroui/react";
-
+import { useEffect, useMemo, useState, Fragment } from "react";
 import { supabase } from "../utils/supabase";
-import type { Key } from "@heroui/react";
+import { Label } from "@heroui/react";
+import * as XLSX from "xlsx";
+import Page from "../ui/_page";
 
-type TableType = "bh" | "sf";
-type Shift = "day" | "night";
+/* =========================
+   TYPES
+========================= */
 
-type Batch = {
-  uid: string;
+type OverviewRow = {
   prod_date: string;
-  shift: Shift;
+  shift: "day" | "night";
+  uid: string;
 };
 
 type ShiftOption = {
   id: string;
-  uid: string;
   label: string;
   prod_date: string;
-  shift: Shift;
+  shift: string;
+  uid: string;
 };
 
 type Row = {
   item_code: string;
-  weight?: number;
-  usage?: number;
-  pcs?: number;
-  quantity?: number;
+  value: number;
+  unit?: string;
 };
 
-export default function SummaryPage() {
-  const [tableType, setTableType] = useState<TableType | null>(null);
-  const [date, setDate] = useState("");
-  const [shift, setShift] = useState<Shift | null>(null);
+/* =========================
+   MODULE CONFIG SYSTEM
+========================= */
 
-  const [batches, setBatches] = useState<Batch[]>([]);
-  const [selectedBatch, setSelectedBatch] = useState<ShiftOption | null>(null);
+const MODULES = {
+  snackfood: [
+    { key: "frying", label: "Frying", table: "sf_frying", valueKey: "weight" },
+    { key: "blending", label: "Blending", table: "sf_blending", valueKey: "usage" },
+    { key: "premix", label: "Premix", table: "sf_premix", valueKey: "usage" },
+    { key: "mixing", label: "Mixing", table: "sf_mix", valueKey: "weight" },
+    { key: "flavoring", label: "Flavoring", table: "sf_flavoring", valueKey: "weight" },
+    { key: "piece", label: "Piece", table: "sf_piece", valueKey: "pcs" },
+    { key: "fg", label: "FG", table: "sf_fg", valueKey: "quantity" },
+  ],
 
-  const [rows, setRows] = useState<Row[]>([]);
-  const [loading, setLoading] = useState(false);
+  bihon: [
+    { key: "cooking", label: "Cooking", table: "bh_cooking", valueKey: "weight" },
+    { key: "packing", label: "Packing", table: "bh_packing", valueKey: "weight" },
+    { key: "fg", label: "FG", table: "bh_fg", valueKey: "quantity" },
+  ],
+} as const;
 
-  // ======================
-  // FETCH BATCHES (CONTROLLED)
-  // ======================
-  const fetchBatches = async () => {
-    if (!tableType || !date || !shift) return;
+/* =========================
+   MAIN
+========================= */
 
-    const { data, error } = await supabase
-      .from("bh_overview")
-      .select("uid, prod_date, shift")
-      .eq("prod_date", date)
-      .eq("shift", shift);
+export default function SFProductionSummary() {
+  const [loading, setLoading] = useState(true);
+  const [overviewRows, setOverviewRows] = useState<OverviewRow[]>([]);
+  const [selectedDate, setSelectedDate] = useState(() => formatDate(new Date()));
+  const [productType, setProductType] = useState<"bihon" | "snackfood">("bihon");
+  const [selectedShift, setSelectedShift] = useState<ShiftOption | null>(null);
+  const [dataMap, setDataMap] = useState<Record<string, Row[]>>({});
 
-    if (error) {
-      console.error("Batch fetch error:", error.message);
-      return;
-    }
+  /* =========================
+     HELPERS
+  ========================= */
 
-    setBatches(data || []);
+  function formatDate(d: Date) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
+
+  const today = useMemo(() => formatDate(new Date()), []);
+  const yesterday = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return formatDate(d);
+  }, []);
+
+  const modules = MODULES[productType];
+
+  // Logic to determine if a module column should show a unit
+  const hasUnit = (moduleKey: string) => {
+    return dataMap[moduleKey]?.some((row) => row.unit && row.unit.trim() !== "");
   };
 
-  // trigger ONLY when all filters are ready
+  /* =========================
+     FETCHING
+  ========================= */
+
   useEffect(() => {
-    setBatches([]);
-    setSelectedBatch(null);
-    setRows([]);
+    const fetchOverview = async () => {
+      setLoading(true);
+      const table = productType === "bihon" ? "bh_overview" : "sf_overview";
+      const { data } = await supabase
+        .from(table)
+        .select("uid, prod_date, shift")
+        .in("prod_date", [today, yesterday]);
 
-    if (tableType && date && shift) {
-      fetchBatches();
-    }
-  }, [tableType, date, shift]);
-
-  // ======================
-  // FETCH ITEMS
-  // ======================
-  const fetchData = async () => {
-    if (!tableType || !selectedBatch) return;
-
-    setLoading(true);
-
-    const table = tableType === "bh" ? "bh_cooking" : "sf_frying"; // adjust if needed
-
-    const { data, error } = await supabase
-      .from(table)
-      .select("*")
-      .eq("prod_id", selectedBatch.uid);
-
-    if (error) {
-      console.error("Fetch error:", error.message);
+      setOverviewRows(data || []);
       setLoading(false);
+    };
+    fetchOverview();
+  }, [productType, today, yesterday]);
+
+  useEffect(() => {
+    if (!selectedShift?.uid) {
+      setDataMap({});
       return;
     }
 
-    setRows(data || []);
-    setLoading(false);
-  };
+    const fetchModules = async () => {
+      setLoading(true);
+      const results: Record<string, Row[]> = {};
 
-  // ======================
-  // PIVOT LOGIC
-  // ======================
-  const pivotData = useMemo(() => {
-    const map = new Map<string, number>();
+      await Promise.all(
+        modules.map(async (m) => {
+          const { data } = await supabase
+            .from(m.table)
+            .select("*")
+            .eq("prod_id", selectedShift.uid);
 
-    for (const r of rows) {
-      const value = Number(r.weight ?? r.usage ?? r.pcs ?? r.quantity ?? 0);
+          results[m.key] = (data || []).map((r: any) => ({
+            item_code: r.item_code,
+            value: r[m.valueKey] ?? 0,
+            unit: r.unit,
+          }));
+        })
+      );
 
-      map.set(r.item_code, (map.get(r.item_code) || 0) + value);
+      setDataMap(results);
+      setLoading(false);
+    };
+
+    fetchModules();
+  }, [selectedShift, productType, modules]);
+
+  const shiftOptions: ShiftOption[] = overviewRows
+    .filter((r) => r.prod_date === selectedDate)
+    .map((row) => ({
+      id: `${row.prod_date}-${row.shift}`,
+      label: `${row.prod_date} ${row.shift.toUpperCase()}`,
+      prod_date: row.prod_date,
+      shift: row.shift,
+      uid: row.uid,
+    }));
+
+  const maxLen = Math.max(0, ...modules.map((m) => dataMap[m.key]?.length || 0));
+  const sum = (arr: Row[] = []) => arr.reduce((a, b) => a + (Number(b.value) || 0), 0);
+
+  /* =========================
+     EXPORT
+  ========================= */
+
+  const exportToExcel = () => {
+    const wsData: any[] = [];
+
+    // Header Row 1: Labels
+    wsData.push(modules.flatMap((m) => {
+      const showUnit = hasUnit(m.key);
+      return showUnit ? [m.label, "", ""] : [m.label, ""];
+    }));
+
+    // Header Row 2: Dynamic Column Titles
+    wsData.push(modules.flatMap((m) => {
+      const cols = ["Item Code", capitalize(m.valueKey)];
+      if (hasUnit(m.key)) cols.push("Unit");
+      return cols;
+    }));
+
+    // Data Rows
+    for (let i = 0; i < maxLen; i++) {
+      wsData.push(modules.flatMap((m) => {
+        const row = dataMap[m.key]?.[i];
+        const rowData = [row?.item_code ?? "", row?.value ?? ""];
+        if (hasUnit(m.key)) rowData.push(row?.unit ?? "");
+        return rowData;
+      }));
     }
 
-    return Array.from(map.entries()).map(([item_code, value]) => ({
-      item_code,
-      value,
-    }));
-  }, [rows]);
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Summary");
+    XLSX.writeFile(wb, `production-${productType}-${selectedDate}.xlsx`);
+  };
+
+  if (loading && Object.keys(dataMap).length === 0) 
+    return <div className="p-10 text-center text-gray-500">Loading data...</div>;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-bold">Summary Pivot View</h1>
+    <Page>
+      <div className="p-6 space-y-6">
+        {/* FILTERS */}
+        <div className="flex gap-4 flex-wrap items-end bg-gray-50 p-4 rounded-lg border">
+          <div className="flex flex-col gap-1">
+            <Label>Date</Label>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="border p-2 rounded bg-white"
+            />
+          </div>
 
-      {/* FILTERS */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-end">
-        {/* MODULE */}
-        <div>
-          <Label>Module</Label>
-          <Select
-            className="w-[160px]"
-            selectedKey={tableType}
-            onSelectionChange={(key) => setTableType(key as TableType)}
+          <div className="flex flex-col gap-1">
+            <Label>Product</Label>
+            <select
+              value={productType}
+              onChange={(e) => {
+                  setProductType(e.target.value as any);
+                  setSelectedShift(null);
+              }}
+              className="border p-2 rounded bg-white h-[42px]"
+            >
+              <option value="bihon">Bihon</option>
+              <option value="snackfood">Snackfood</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <Label>Shift</Label>
+            <select
+              value={selectedShift?.id || ""}
+              onChange={(e) => {
+                const found = shiftOptions.find((s) => s.id === e.target.value);
+                setSelectedShift(found || null);
+              }}
+              className="border p-2 rounded bg-white h-[42px] min-w-[150px]"
+            >
+              <option value="">Select shift</option>
+              {shiftOptions.map((s) => (
+                <option key={s.id} value={s.id}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            onClick={exportToExcel}
+            disabled={!selectedShift}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-2 rounded h-[42px]"
           >
-            <Select.Trigger>
-              <Select.Value />
-            </Select.Trigger>
-
-            <Select.Popover>
-              <ListBox>
-                <ListBox.Item id="bh">Bihon (BH)</ListBox.Item>
-                <ListBox.Item id="sf">Snackfood (SF)</ListBox.Item>
-              </ListBox>
-            </Select.Popover>
-          </Select>
+            Export
+          </button>
         </div>
 
-        {/* DATE */}
-        <div>
-          <Label>Production Date</Label>
-          <Input
-            type="date"
-            className="w-[180px]"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
-        </div>
-
-        {/* SHIFT */}
-        <div>
-          <Label>Shift</Label>
-          <Select
-            className="w-[140px]"
-            selectedKey={shift}
-            onSelectionChange={(key) => setShift(key as Shift)}
-          >
-            <Select.Trigger>
-              <Select.Value />
-            </Select.Trigger>
-
-            <Select.Popover>
-              <ListBox>
-                <ListBox.Item id="day">Day</ListBox.Item>
-                <ListBox.Item id="night">Night</ListBox.Item>
-              </ListBox>
-            </Select.Popover>
-          </Select>
-        </div>
-
-        {/* BATCH (ONLY AFTER ALL FILLED) */}
-        <div>
-          <Label>Batch</Label>
-
-          <Select
-            className="w-[280px]"
-            selectedKey={selectedBatch?.id ?? null}
-            onSelectionChange={(key) => {
-              const found = batches.find((b) => b.uid === String(key));
-
-              if (!found) return;
-
-              setSelectedBatch({
-                id: found.uid,
-                uid: found.uid,
-                prod_date: found.prod_date,
-                shift: found.shift,
-                label: `${found.prod_date} - ${found.shift.toUpperCase()}`,
-              });
-            }}
-          >
-            <Select.Trigger>
-              <Select.Value />
-            </Select.Trigger>
-
-            <Select.Popover>
-              <ListBox>
-                {batches.map((b) => (
-                  <ListBox.Item key={b.uid} id={b.uid}>
-                    {b.prod_date} - {b.shift.toUpperCase()}
-                  </ListBox.Item>
-                ))}
-              </ListBox>
-            </Select.Popover>
-          </Select>
-        </div>
-
-        {/* LOAD */}
-        <Button onPress={fetchData} className="w-[140px]">
-          Load
-        </Button>
-      </div>
-
-      {/* TABLE */}
-      <div className="overflow-auto rounded border">
-        <table className="w-full border-collapse text-sm">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="border p-2 text-left">Item Code</th>
-              <th className="border p-2 text-right">Total</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={2} className="p-4 text-center">
-                  Loading...
-                </td>
-              </tr>
-            ) : pivotData.length === 0 ? (
-              <tr>
-                <td colSpan={2} className="p-4 text-center">
-                  No data found
-                </td>
-              </tr>
-            ) : (
-              pivotData.map((row) => (
-                <tr key={row.item_code}>
-                  <td className="border p-2">{row.item_code}</td>
-                  <td className="border p-2 text-right">{row.value}</td>
+        {/* TABLE */}
+        {!selectedShift ? (
+          <div className="p-20 text-center border-2 border-dashed rounded-lg text-gray-400">
+            Select a shift to display data.
+          </div>
+        ) : (
+          <div className="overflow-auto border rounded-lg shadow-sm">
+            <table className="w-full text-sm border-collapse bg-white">
+              <thead>
+                <tr className="bg-gray-800 text-white text-center">
+                  {modules.map((m) => (
+                    <th 
+                      key={m.key} 
+                      colSpan={hasUnit(m.key) ? 3 : 2} 
+                      className="py-2 border-x border-gray-700"
+                    >
+                      {m.label}
+                    </th>
+                  ))}
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                <tr className="bg-gray-100 text-gray-700 text-center border-b">
+                  {modules.map((m) => (
+                    <Fragment key={m.key}>
+                      <th className="p-2 border-x font-semibold">Item</th>
+                      <th className="p-2 border-x font-semibold capitalize">{m.valueKey}</th>
+                      {hasUnit(m.key) && <th className="p-2 border-x font-semibold">Unit</th>}
+                    </Fragment>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {maxLen > 0 ? (
+                  Array.from({ length: maxLen }).map((_, i) => (
+                    <tr key={i} className="text-center border-b hover:bg-gray-50">
+                      {modules.map((m) => {
+                        const row = dataMap[m.key]?.[i];
+                        const showUnit = hasUnit(m.key);
+                        return (
+                          <Fragment key={`${m.key}-${i}`}>
+                            <td className="p-2 border-x">{row?.item_code || "-"}</td>
+                            <td className="p-2 border-x">{row?.value ?? ""}</td>
+                            {showUnit && <td className="p-2 border-x text-gray-500 italic">{row?.unit || ""}</td>}
+                          </Fragment>
+                        );
+                      })}
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={100} className="p-10 text-center text-gray-400">No records found.</td>
+                  </tr>
+                )}
+                <tr className="font-bold bg-gray-50 text-center">
+                  {modules.map((m) => (
+                    <td key={m.key} colSpan={hasUnit(m.key) ? 3 : 2} className="p-3 border-x border-t-2">
+                      Total {capitalize(m.valueKey)}: {sum(dataMap[m.key]).toLocaleString()}
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-    </div>
+    </Page>
   );
 }

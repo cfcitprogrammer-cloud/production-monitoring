@@ -4,8 +4,8 @@ export default function Header({ children }: { children: React.ReactNode }) {
       <div>{children}</div>
 
       <div className="text-right">
-        <h1 className="font-semibold">Good morning</h1>
-        <p className="text-sm">11:00 AM</p>
+        {/* <h1 className="font-semibold">Good morning</h1>
+        <p className="text-sm">11:00 AM</p> */}
       </div>
     </header>
   );

@@ -88,7 +88,7 @@ export default function SFMixForm() {
           .order("item_code"),
 
         supabase
-          .from("bh_overview")
+          .from("sf_overview")
           .select("uid, prod_date, shift")
           .in("prod_date", [today, yesterday]),
       ]);
