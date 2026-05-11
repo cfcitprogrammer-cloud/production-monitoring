@@ -14,13 +14,7 @@ import {
 import { supabase } from "../../utils/supabase";
 
 export default function SFMainForm() {
-  const allFryers = [
-    "Fryer 1",
-    "Fryer 2",
-    "Fryer 3",
-    "Fryer 4",
-    "Fryer 5",
-  ];
+  const allFryers = ["Fryer 1", "Fryer 2", "Fryer 3", "Fryer 4", "Fryer 5"];
 
   // ======================
   // FORM STATE
@@ -32,18 +26,15 @@ export default function SFMainForm() {
 
   const [opType, setOpType] = useState<string | null>(null);
 
-  const [machineTroubleOccurred, setMachineTroubleOccurred] =
-    useState(0);
+  const [machineTroubleOccurred, setMachineTroubleOccurred] = useState(0);
 
   const [troubleRemarks, setTroubleRemarks] = useState("");
 
   const [additionalRemarks, setAdditionalRemarks] = useState("");
 
-  const [selectedFryers, setSelectedFryers] = useState<string[]>([
-    "Fryer 1",
-  ]);
+  const [selectedFryers, setSelectedFryers] = useState<string[]>(["Fryer 1"]);
 
-  const [loading, setLoading] = useState(false);
+  const [_, setLoading] = useState(false);
 
   // ======================
   // CHECKBOX STATE
@@ -52,16 +43,13 @@ export default function SFMainForm() {
   const isAllSelected = selectedFryers.length === allFryers.length;
 
   const isIndeterminate =
-    selectedFryers.length > 0 &&
-    selectedFryers.length < allFryers.length;
+    selectedFryers.length > 0 && selectedFryers.length < allFryers.length;
 
   // ======================
   // SUBMIT
   // ======================
 
-  async function submitOverview(
-    e: React.FormEvent<HTMLFormElement>
-  ) {
+  async function submitOverview(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     setLoading(true);
@@ -79,8 +67,7 @@ export default function SFMainForm() {
 
             op_type: opType,
 
-            machine_trouble:
-              machineTroubleOccurred,
+            machine_trouble: machineTroubleOccurred,
 
             trouble_remarks: troubleRemarks,
 
@@ -132,9 +119,7 @@ export default function SFMainForm() {
       {/* HEADER */}
 
       <header>
-        <h1 className="text-2xl font-bold">
-          SF Overview
-        </h1>
+        <h1 className="text-2xl font-bold">SF Overview</h1>
 
         <p className="text-default-500">
           Snack Factory production monitoring form
@@ -145,23 +130,17 @@ export default function SFMainForm() {
       {/* PRODUCTION DETAILS */}
       {/* ====================== */}
 
-      <h2 className="text-xl font-semibold">
-        Production Details
-      </h2>
+      <h2 className="text-xl font-semibold">Production Details</h2>
 
       {/* DATE */}
 
       <div>
-        <Label className="block mb-2">
-          Production Date
-        </Label>
+        <Label className="block mb-2">Production Date</Label>
 
         <Input
           type="date"
           value={prodDate}
-          onChange={(e) =>
-            setProdDate(e.target.value)
-          }
+          onChange={(e) => setProdDate(e.target.value)}
         />
       </div>
 
@@ -184,13 +163,9 @@ export default function SFMainForm() {
 
           <Select.Popover>
             <ListBox>
-              <ListBox.Item id="day">
-                Day Shift
-              </ListBox.Item>
+              <ListBox.Item id="day">Day Shift</ListBox.Item>
 
-              <ListBox.Item id="night">
-                Night Shift
-              </ListBox.Item>
+              <ListBox.Item id="night">Night Shift</ListBox.Item>
             </ListBox>
           </Select.Popover>
         </Select>
@@ -199,9 +174,7 @@ export default function SFMainForm() {
       {/* OPERATION TYPE */}
 
       <div>
-        <Label className="block mb-2">
-          Operation Type
-        </Label>
+        <Label className="block mb-2">Operation Type</Label>
 
         <Select
           className="w-[256px]"
@@ -217,17 +190,11 @@ export default function SFMainForm() {
 
           <Select.Popover>
             <ListBox>
-              <ListBox.Item id="startup">
-                Start Up
-              </ListBox.Item>
+              <ListBox.Item id="startup">Start Up</ListBox.Item>
 
-              <ListBox.Item id="normal">
-                Normal Operation
-              </ListBox.Item>
+              <ListBox.Item id="normal">Normal Operation</ListBox.Item>
 
-              <ListBox.Item id="shutdown">
-                Shutdown
-              </ListBox.Item>
+              <ListBox.Item id="shutdown">Shutdown</ListBox.Item>
             </ListBox>
           </Select.Popover>
         </Select>
@@ -237,40 +204,28 @@ export default function SFMainForm() {
       {/* MACHINE TROUBLE */}
       {/* ====================== */}
 
-      <h2 className="text-xl font-semibold">
-        Machine Trouble
-      </h2>
+      <h2 className="text-xl font-semibold">Machine Trouble</h2>
 
       {/* MACHINE TROUBLE OCCURRED */}
 
       <div>
-        <Label className="block mb-2">
-          Machine Trouble Occurred (Count)
-        </Label>
+        <Label className="block mb-2">Machine Trouble Occurred (Count)</Label>
 
         <Input
           type="number"
           value={String(machineTroubleOccurred)}
-          onChange={(e) =>
-            setMachineTroubleOccurred(
-              Number(e.target.value)
-            )
-          }
+          onChange={(e) => setMachineTroubleOccurred(Number(e.target.value))}
         />
       </div>
 
       {/* TROUBLE REMARKS */}
 
       <div>
-        <Label className="block mb-2">
-          Trouble Remarks
-        </Label>
+        <Label className="block mb-2">Trouble Remarks</Label>
 
         <TextArea
           value={troubleRemarks}
-          onChange={(e) =>
-            setTroubleRemarks(e.target.value)
-          }
+          onChange={(e) => setTroubleRemarks(e.target.value)}
         />
       </div>
 
@@ -278,9 +233,7 @@ export default function SFMainForm() {
       {/* FRYERS RUNNING */}
       {/* ====================== */}
 
-      <h2 className="text-xl font-semibold">
-        Fryers Running
-      </h2>
+      <h2 className="text-xl font-semibold">Fryers Running</h2>
 
       {/* SELECT ALL */}
 
@@ -288,9 +241,7 @@ export default function SFMainForm() {
         isIndeterminate={isIndeterminate}
         isSelected={isAllSelected}
         onChange={(checked) => {
-          setSelectedFryers(
-            checked ? allFryers : []
-          );
+          setSelectedFryers(checked ? allFryers : []);
         }}
       >
         <Checkbox.Control>
@@ -307,17 +258,10 @@ export default function SFMainForm() {
       <div className="ml-6 flex flex-col gap-2">
         <CheckboxGroup
           value={selectedFryers}
-          onChange={(values) =>
-            setSelectedFryers(
-              values as string[]
-            )
-          }
+          onChange={(values) => setSelectedFryers(values as string[])}
         >
           {allFryers.map((fryer) => (
-            <Checkbox
-              key={fryer}
-              value={fryer}
-            >
+            <Checkbox key={fryer} value={fryer}>
               <Checkbox.Control>
                 <Checkbox.Indicator />
               </Checkbox.Control>
@@ -335,27 +279,17 @@ export default function SFMainForm() {
       {/* ====================== */}
 
       <div>
-        <h2 className="text-xl font-semibold mb-2">
-          Additional Remarks
-        </h2>
+        <h2 className="text-xl font-semibold mb-2">Additional Remarks</h2>
 
         <TextArea
           value={additionalRemarks}
-          onChange={(e) =>
-            setAdditionalRemarks(
-              e.target.value
-            )
-          }
+          onChange={(e) => setAdditionalRemarks(e.target.value)}
         />
       </div>
 
       {/* SUBMIT */}
 
-      <Button
-        type="submit"
-      >
-        Submit Overview
-      </Button>
+      <Button type="submit">Submit Overview</Button>
     </form>
   );
 }

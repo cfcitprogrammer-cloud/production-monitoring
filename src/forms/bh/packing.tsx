@@ -2,11 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   Autocomplete,
-  EmptyState,
   Label,
   ListBox,
   SearchField,
-  useFilter,
   Button,
   Input,
   Select,
@@ -40,10 +38,8 @@ type ShiftOption = {
 };
 
 export default function BHPackingForm() {
-  const { contains } = useFilter({ sensitivity: "base" });
-
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [_, setSubmitting] = useState(false);
 
   const [itemCodes, setItemCodes] = useState<ItemCode[]>([]);
   const [overviewRows, setOverviewRows] = useState<OverviewRow[]>([]);

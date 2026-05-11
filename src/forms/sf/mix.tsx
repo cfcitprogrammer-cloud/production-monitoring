@@ -5,7 +5,6 @@ import {
   Label,
   ListBox,
   SearchField,
-  useFilter,
   Button,
   Input,
   Select,
@@ -39,8 +38,6 @@ type ShiftOption = {
 };
 
 export default function SFMixForm() {
-  const { contains } = useFilter({ sensitivity: "base" });
-
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 

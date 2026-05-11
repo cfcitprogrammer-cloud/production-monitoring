@@ -1,7 +1,4 @@
-"use client";
-
 import { useEffect, useMemo, useState } from "react";
-
 import {
   Autocomplete,
   Label,
@@ -11,13 +8,14 @@ import {
   Input,
   Select,
 } from "@heroui/react";
-
 import type { Key } from "@heroui/react";
 import { supabase } from "../../utils/supabase";
 
-type FGItem = {
-  itemCode: string;
-  quantity: string;
+// Updated Type to include requested fields
+type PackingItem = {
+  item_code: string;
+  kgs: number;
+  qty: number;
   unit: string;
 };
 
@@ -35,34 +33,29 @@ type OverviewRow = {
 type ShiftOption = {
   id: string;
   label: string;
-  prod_date: string;
-  shift: string;
   uid: string;
 };
 
-export default function SFFGForm() {
+export default function CantonPackingForm() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   const [itemCodes, setItemCodes] = useState<ItemCode[]>([]);
   const [overviewRows, setOverviewRows] = useState<OverviewRow[]>([]);
 
+  // Form State
   const [selectedShift, setSelectedShift] = useState<ShiftOption | null>(null);
-
   const [selectedKey, setSelectedKey] = useState<Key | null>(null);
-  const [quantity, setQuantity] = useState("");
-  const [unit, setUnit] = useState<Key | null>(null);
+  const [kgs, setKgs] = useState("");
+  const [qty, setQty] = useState("");
+  const [unit, setUnit] = useState<string>("pcs"); // Default unit
 
-  const [items, setItems] = useState<FGItem[]>([]);
+  const [items, setItems] = useState<PackingItem[]>([]);
 
-  const unitOptions = [
-    { id: "pc/s", label: "pc/s" },
-    { id: "case/s", label: "case/s" },
-    { id: "bundle/s", label: "bundle/s" },
-  ];
+  const units = ["bdl", "pcs", "pack", "case"];
 
   // ======================
-  // DATE
+  // DATES (formatting helper)
   // ======================
   const today = useMemo(() => formatDate(new Date()), []);
   const yesterday = useMemo(() => {
@@ -72,46 +65,37 @@ export default function SFFGForm() {
   }, []);
 
   function formatDate(d: Date) {
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
+    return d.toISOString().split("T")[0];
   }
 
   // ======================
-  // FETCH
+  // FETCH DATA
   // ======================
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-
       const [codesRes, overviewRes] = await Promise.all([
         supabase
-          .from("sf_sku")
+          .from("bihon_sku")
           .select("id, item_code")
-          .eq("type", "fg")
+          .eq("type", "packing_bihon")
           .order("item_code"),
-
         supabase
-          .from("sf_overview")
+          .from("bh_overview")
           .select("uid, prod_date, shift")
           .in("prod_date", [today, yesterday]),
       ]);
 
       if (codesRes.data) setItemCodes(codesRes.data);
       if (overviewRes.data) setOverviewRows(overviewRes.data);
-
       setLoading(false);
     };
-
     fetchData();
   }, [today, yesterday]);
 
   const shiftOptions: ShiftOption[] = overviewRows.map((row) => ({
     id: `${row.prod_date}-${row.shift}`,
     label: `${row.prod_date} ${row.shift.toUpperCase()}`,
-    prod_date: row.prod_date,
-    shift: row.shift,
     uid: row.uid,
   }));
 
@@ -124,29 +108,27 @@ export default function SFFGForm() {
   // ADD ITEM
   // ======================
   const addItem = () => {
-    if (!selectedKey || !quantity || !unit) return;
+    if (!selectedKey || !qty || !kgs || !unit) return;
 
     const code = String(selectedKey);
-
-    if (items.some((i) => i.itemCode === code)) return;
+    if (items.some((i) => i.item_code === code)) return;
 
     setItems((prev) => [
       ...prev,
       {
-        itemCode: code,
-        quantity,
-        unit: String(unit),
+        item_code: code,
+        kgs: Number(kgs),
+        qty: Number(qty),
+        unit: unit,
       },
     ]);
 
+    // Reset row inputs
     setSelectedKey(null);
-    setQuantity("");
-    setUnit(null);
+    setKgs("");
+    setQty("");
   };
 
-  // ======================
-  // REMOVE ITEM
-  // ======================
   const removeItem = (index: number) => {
     setItems((prev) => prev.filter((_, i) => i !== index));
   };
@@ -154,60 +136,46 @@ export default function SFFGForm() {
   // ======================
   // SUBMIT
   // ======================
-  async function submitFGForm(e: React.FormEvent<HTMLFormElement>) {
+  async function submitPackingForm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-
-    if (!selectedShift) {
-      alert("Select a shift");
-      return;
-    }
-
-    if (items.length === 0) {
-      alert("Add items first");
+    if (!selectedShift || items.length === 0) {
+      alert("Please select a shift and add at least one item.");
       return;
     }
 
     setSubmitting(true);
-
     try {
       const payload = items.map((item) => ({
-        item_code: item.itemCode,
-        qty: Number(item.quantity),
-        unit: item.unit,
         prod_id: selectedShift.uid,
+        item_code: item.item_code,
+        kgs: item.kgs,
+        qty: item.qty,
+        unit: item.unit,
       }));
 
-      const { error } = await supabase.from("sf_fg").insert(payload);
+      const { error } = await supabase.from("bh_packing").insert(payload);
+      if (error) throw error;
 
-      if (error) {
-        alert(error.message);
-        return;
-      }
-
-      alert("FG form submitted!");
-
+      alert("Packing form submitted!");
       setItems([]);
-      setSelectedKey(null);
-      setQuantity("");
-      setUnit(null);
       setSelectedShift(null);
+    } catch (err: any) {
+      alert(err.message);
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (loading) {
-    return <div className="py-10 text-center">Loading...</div>;
-  }
+  if (loading) return <div className="py-10 text-center">Loading...</div>;
 
   return (
-    <form className="space-y-6" onSubmit={submitFGForm}>
-      {/* SHIFT */}
+    <form className="space-y-6" onSubmit={submitPackingForm}>
+      {/* SHIFT SELECTION */}
       <div>
-        <Label className="mb-2 block">Select Production Shift</Label>
-
+        <Label className="mb-2 block font-bold">Production Shift</Label>
         <Select
           className="w-full sm:w-[320px]"
+          placeholder="Select a shift"
           selectedKey={selectedShift?.id ?? null}
           onSelectionChange={(key) => {
             const found = shiftOptions.find((s) => s.id === String(key));
@@ -218,7 +186,6 @@ export default function SFFGForm() {
             <Select.Value />
             <Select.Indicator />
           </Select.Trigger>
-
           <Select.Popover>
             <ListBox>
               {shiftOptions.map((s) => (
@@ -231,11 +198,12 @@ export default function SFFGForm() {
         </Select>
       </div>
 
-      {/* INPUT */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <div className="w-full sm:w-[280px]">
-          <Label>Item Code</Label>
+      <hr />
 
+      {/* INPUT ROW */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-5 items-end bg-default-50 p-4 rounded-lg">
+        <div className="sm:col-span-1">
+          <Label>Item Code</Label>
           <Autocomplete
             value={selectedKey}
             onChange={(key) => setSelectedKey(key as Key | null)}
@@ -244,12 +212,10 @@ export default function SFFGForm() {
               <Autocomplete.Value />
               <Autocomplete.Indicator />
             </Autocomplete.Trigger>
-
             <Autocomplete.Popover>
               <SearchField>
-                <SearchField.Input placeholder="Search..." />
+                <SearchField.Input placeholder="Search code..." />
               </SearchField>
-
               <ListBox>
                 {itemsList.map((item) => (
                   <ListBox.Item key={item.id} id={item.id}>
@@ -261,31 +227,41 @@ export default function SFFGForm() {
           </Autocomplete>
         </div>
 
-        <div className="w-[160px]">
-          <Label>Quantity</Label>
+        <div>
+          <Label>KGs</Label>
           <Input
             type="number"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
+            value={kgs}
+            onChange={(e) => setKgs(e.target.value)}
+            placeholder="0.00"
           />
         </div>
 
-        <div className="w-[160px]">
-          <Label>Unit</Label>
+        <div>
+          <Label>Qty</Label>
+          <Input
+            type="number"
+            value={qty}
+            onChange={(e) => setQty(e.target.value)}
+            placeholder="0"
+          />
+        </div>
 
+        <div>
+          <Label>Unit</Label>
           <Select
             selectedKey={unit}
-            onSelectionChange={(key) => setUnit(key as Key)}
+            onSelectionChange={(key) => setUnit(String(key))}
           >
             <Select.Trigger>
               <Select.Value />
+              <Select.Indicator />
             </Select.Trigger>
-
             <Select.Popover>
               <ListBox>
-                {unitOptions.map((u) => (
-                  <ListBox.Item key={u.id} id={u.id}>
-                    {u.label}
+                {units.map((u) => (
+                  <ListBox.Item key={u} id={u}>
+                    {u}
                   </ListBox.Item>
                 ))}
               </ListBox>
@@ -293,32 +269,59 @@ export default function SFFGForm() {
           </Select>
         </div>
 
-        <Button type="button" onPress={addItem}>
-          Add
+        <Button
+          type="button"
+          onPress={addItem}
+          className="bg-primary text-white"
+        >
+          Add Item
         </Button>
       </div>
 
-      {/* LIST */}
-      <div className="space-y-3">
+      {/* LIST OF ADDED ITEMS */}
+      <div className="space-y-2">
+        <Label className="font-bold">Items to Submit ({items.length})</Label>
         {items.map((item, i) => (
           <div
             key={i}
-            className="flex flex-col gap-2 rounded border p-3 sm:flex-row sm:items-end"
+            className="flex items-center gap-4 rounded border border-default-200 p-3 bg-white shadow-sm"
           >
-            <Input value={item.itemCode} disabled className="sm:w-[200px]" />
-            <Input value={item.quantity} disabled className="sm:w-[120px]" />
-            <Input value={item.unit} disabled className="sm:w-[120px]" />
-
-            <Button type="button" onPress={() => removeItem(i)}>
+            <div className="flex-1 grid grid-cols-4 gap-2 text-sm">
+              <div>
+                <span className="text-default-500 text-xs block">Code</span>
+                {item.item_code}
+              </div>
+              <div>
+                <span className="text-default-500 text-xs block">KGs</span>
+                {item.kgs}
+              </div>
+              <div>
+                <span className="text-default-500 text-xs block">Qty</span>
+                {item.qty}
+              </div>
+              <div>
+                <span className="text-default-500 text-xs block">Unit</span>
+                {item.unit}
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-danger"
+              onPress={() => removeItem(i)}
+            >
               Remove
             </Button>
           </div>
         ))}
       </div>
 
-      {/* SUBMIT */}
-      <Button type="submit" isDisabled={submitting}>
-        Submit FG Form
+      <Button
+        type="submit"
+        className="w-full bg-success text-white font-bold"
+        isDisabled={submitting}
+      >
+        {submitting ? "Submitting..." : "Submit Packing Form"}
       </Button>
     </form>
   );

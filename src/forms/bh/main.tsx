@@ -54,7 +54,7 @@ export default function BHMainForm() {
 
   const [additionalRemarks, setAdditionalRemarks] = useState("");
 
-  const [loading, setLoading] = useState(false);
+  const [_, setLoading] = useState(false);
 
   // ======================
   // CHECKBOX STATE

@@ -5,7 +5,6 @@ import {
   Label,
   ListBox,
   SearchField,
-  useFilter,
   Button,
   Input,
   Select,
@@ -40,41 +39,27 @@ type ShiftOption = {
 };
 
 export default function SFFlavoringForm() {
-  const { contains } = useFilter({
-    sensitivity: "base",
-  });
-
   const [loading, setLoading] = useState(true);
 
-  const [submitting, setSubmitting] =
-    useState(false);
+  const [_, setSubmitting] = useState(false);
 
-  const [itemCodes, setItemCodes] =
-    useState<ItemCode[]>([]);
+  const [itemCodes, setItemCodes] = useState<ItemCode[]>([]);
 
-  const [overviewRows, setOverviewRows] =
-    useState<OverviewRow[]>([]);
+  const [overviewRows, setOverviewRows] = useState<OverviewRow[]>([]);
 
-  const [selectedShift, setSelectedShift] =
-    useState<ShiftOption | null>(null);
+  const [selectedShift, setSelectedShift] = useState<ShiftOption | null>(null);
 
-  const [selectedKey, setSelectedKey] =
-    useState<Key | null>(null);
+  const [selectedKey, setSelectedKey] = useState<Key | null>(null);
 
   const [weight, setWeight] = useState("");
 
-  const [items, setItems] = useState<
-    FlavoringItem[]
-  >([]);
+  const [items, setItems] = useState<FlavoringItem[]>([]);
 
   // ======================
   // DATE HELPERS
   // ======================
 
-  const today = useMemo(
-    () => formatDate(new Date()),
-    []
-  );
+  const today = useMemo(() => formatDate(new Date()), []);
 
   const yesterday = useMemo(() => {
     const d = new Date();
@@ -87,13 +72,9 @@ export default function SFFlavoringForm() {
   function formatDate(d: Date) {
     const yyyy = d.getFullYear();
 
-    const mm = String(
-      d.getMonth() + 1
-    ).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
 
-    const dd = String(
-      d.getDate()
-    ).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
 
     return `${yyyy}-${mm}-${dd}`;
   }
@@ -106,36 +87,28 @@ export default function SFFlavoringForm() {
     const fetchData = async () => {
       setLoading(true);
 
-      const [codesRes, overviewRes] =
-        await Promise.all([
-          supabase
-            .from("sf_sku")
-            .select("id, item_code")
-            .eq("type", "flavoring")
-            .order("item_code"),
+      const [codesRes, overviewRes] = await Promise.all([
+        supabase
+          .from("sf_sku")
+          .select("id, item_code")
+          .eq("type", "flavoring")
+          .order("item_code"),
 
-          // IMPORTANT:
-          // use sf_overview
+        // IMPORTANT:
+        // use sf_overview
 
-          supabase
-            .from("sf_overview")
-            .select(
-              "uid, prod_date, shift"
-            )
-            .in("prod_date", [
-              today,
-              yesterday,
-            ]),
-        ]);
+        supabase
+          .from("sf_overview")
+          .select("uid, prod_date, shift")
+          .in("prod_date", [today, yesterday]),
+      ]);
 
       if (codesRes.data) {
         setItemCodes(codesRes.data);
       }
 
       if (overviewRes.data) {
-        setOverviewRows(
-          overviewRes.data
-        );
+        setOverviewRows(overviewRes.data);
       }
 
       setLoading(false);
@@ -148,18 +121,17 @@ export default function SFFlavoringForm() {
   // SHIFT OPTIONS
   // ======================
 
-  const shiftOptions: ShiftOption[] =
-    overviewRows.map((row) => ({
-      id: `${row.prod_date}-${row.shift}`,
+  const shiftOptions: ShiftOption[] = overviewRows.map((row) => ({
+    id: `${row.prod_date}-${row.shift}`,
 
-      label: `${row.prod_date} ${row.shift.toUpperCase()}`,
+    label: `${row.prod_date} ${row.shift.toUpperCase()}`,
 
-      prod_date: row.prod_date,
+    prod_date: row.prod_date,
 
-      shift: row.shift,
+    shift: row.shift,
 
-      uid: row.uid,
-    }));
+    uid: row.uid,
+  }));
 
   // ======================
   // ITEM OPTIONS
@@ -184,11 +156,7 @@ export default function SFFlavoringForm() {
 
     // prevent duplicates
 
-    if (
-      items.some(
-        (i) => i.item_code === code
-      )
-    ) {
+    if (items.some((i) => i.item_code === code)) {
       return;
     }
 
@@ -211,21 +179,15 @@ export default function SFFlavoringForm() {
   // REMOVE ITEM
   // ======================
 
-  const removeItem = (
-    index: number
-  ) => {
-    setItems((prev) =>
-      prev.filter((_, i) => i !== index)
-    );
+  const removeItem = (index: number) => {
+    setItems((prev) => prev.filter((_, i) => i !== index));
   };
 
   // ======================
   // SUBMIT
   // ======================
 
-  async function submitFlavoringForm(
-    e: React.FormEvent<HTMLFormElement>
-  ) {
+  async function submitFlavoringForm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     if (!selectedShift) {
@@ -245,21 +207,15 @@ export default function SFFlavoringForm() {
     try {
       // child rows referencing sf_overview
 
-      const payload = items.map(
-        (item) => ({
-          item_code: item.item_code,
+      const payload = items.map((item) => ({
+        item_code: item.item_code,
 
-          weight: item.weight,
+        weight: item.weight,
 
-          prod_id:
-            selectedShift.uid,
-        })
-      );
+        prod_id: selectedShift.uid,
+      }));
 
-      const { error } =
-        await supabase
-          .from("sf_flavoring")
-          .insert(payload);
+      const { error } = await supabase.from("sf_flavoring").insert(payload);
 
       if (error) {
         alert(error.message);
@@ -267,9 +223,7 @@ export default function SFFlavoringForm() {
         return;
       }
 
-      alert(
-        "Flavoring form submitted!"
-      );
+      alert("Flavoring form submitted!");
 
       // reset
 
@@ -286,42 +240,23 @@ export default function SFFlavoringForm() {
   }
 
   if (loading) {
-    return (
-      <div className="py-10 text-center">
-        Loading...
-      </div>
-    );
+    return <div className="py-10 text-center">Loading...</div>;
   }
 
   return (
-    <form
-      className="space-y-6"
-      onSubmit={
-        submitFlavoringForm
-      }
-    >
+    <form className="space-y-6" onSubmit={submitFlavoringForm}>
       {/* SHIFT */}
 
       <div>
-        <Label className="mb-2 block">
-          Select Production Shift
-        </Label>
+        <Label className="mb-2 block">Select Production Shift</Label>
 
         <Select
           className="w-full sm:w-[320px]"
-          selectedKey={
-            selectedShift?.id ?? null
-          }
+          selectedKey={selectedShift?.id ?? null}
           onSelectionChange={(key) => {
-            const found =
-              shiftOptions.find(
-                (s) =>
-                  s.id === String(key)
-              );
+            const found = shiftOptions.find((s) => s.id === String(key));
 
-            setSelectedShift(
-              found ?? null
-            );
+            setSelectedShift(found ?? null);
           }}
         >
           <Select.Trigger>
@@ -333,10 +268,7 @@ export default function SFFlavoringForm() {
           <Select.Popover>
             <ListBox>
               {shiftOptions.map((s) => (
-                <ListBox.Item
-                  key={s.id}
-                  id={s.id}
-                >
+                <ListBox.Item key={s.id} id={s.id}>
                   {s.label}
                 </ListBox.Item>
               ))}
@@ -355,11 +287,7 @@ export default function SFFlavoringForm() {
 
           <Autocomplete
             value={selectedKey}
-            onChange={(key) =>
-              setSelectedKey(
-                key as Key | null
-              )
-            }
+            onChange={(key) => setSelectedKey(key as Key | null)}
           >
             <Autocomplete.Trigger>
               <Autocomplete.Value />
@@ -374,10 +302,7 @@ export default function SFFlavoringForm() {
 
               <ListBox>
                 {itemsList.map((item) => (
-                  <ListBox.Item
-                    key={item.id}
-                    id={item.id}
-                  >
+                  <ListBox.Item key={item.id} id={item.id}>
                     {item.name}
                   </ListBox.Item>
                 ))}
@@ -394,20 +319,13 @@ export default function SFFlavoringForm() {
           <Input
             type="number"
             value={weight}
-            onChange={(e) =>
-              setWeight(
-                e.target.value
-              )
-            }
+            onChange={(e) => setWeight(e.target.value)}
           />
         </div>
 
         {/* ADD BUTTON */}
 
-        <Button
-          type="button"
-          onPress={addItem}
-        >
+        <Button type="button" onPress={addItem}>
           Add
         </Button>
       </div>
@@ -431,9 +349,7 @@ export default function SFFlavoringForm() {
             {/* WEIGHT */}
 
             <Input
-              value={String(
-                item.weight
-              )}
+              value={String(item.weight)}
               className="w-full sm:w-[120px]"
               disabled
             />
@@ -443,9 +359,7 @@ export default function SFFlavoringForm() {
             <Button
               type="button"
               className="w-full sm:w-auto"
-              onPress={() =>
-                removeItem(i)
-              }
+              onPress={() => removeItem(i)}
             >
               Remove
             </Button>
@@ -455,11 +369,7 @@ export default function SFFlavoringForm() {
 
       {/* SUBMIT */}
 
-      <Button
-        type="submit"
-      >
-        Submit Flavoring Form
-      </Button>
+      <Button type="submit">Submit Flavoring Form</Button>
     </form>
   );
 }
