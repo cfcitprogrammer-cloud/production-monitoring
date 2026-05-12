@@ -7,6 +7,8 @@ import {
   Button,
   Input,
   Select,
+  Spinner,
+  toast,
 } from "@heroui/react";
 import type { Key } from "@heroui/react";
 import { supabase } from "../../utils/supabase";
@@ -120,7 +122,7 @@ export default function CantonPackingForm() {
   async function submitPackingForm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (items.length === 0) {
-      alert("Please select a shift and add at least one item.");
+      toast.info("Please add at least one item.");
       return;
     }
 
@@ -137,10 +139,10 @@ export default function CantonPackingForm() {
       const { error } = await supabase.from("bh_packing").insert(payload);
       if (error) throw error;
 
-      alert("Packing form submitted!");
+      toast.success("Packing form submitted!");
       setItems([]);
     } catch (err: any) {
-      alert(err.message);
+      toast.danger(err.message);
     } finally {
       setSubmitting(false);
     }
@@ -346,9 +348,14 @@ export default function CantonPackingForm() {
       <Button
         type="submit"
         className="w-full bg-success text-white font-bold"
-        isDisabled={submitting}
+        isPending={submitting}
       >
-        {submitting ? "Submitting..." : "Submit Packing Form"}
+        {({ isPending }) => (
+          <>
+            {isPending ? <Spinner color="current" size="sm" /> : null}
+            Submit Packing Form
+          </>
+        )}
       </Button>
     </form>
   );

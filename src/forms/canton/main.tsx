@@ -8,6 +8,8 @@ import {
   Button,
   Select,
   ListBox,
+  Spinner,
+  toast,
 } from "@heroui/react";
 import { supabase } from "../../utils/supabase";
 
@@ -30,7 +32,7 @@ export default function CantonMainForm() {
 
   const [selectedLines, setSelectedLines] = useState<string[]>(["Line 1"]);
   const [additionalRemarks, setAdditionalRemarks] = useState("");
-  const [_, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // ======================
   // CHECKBOX LOGIC
@@ -66,7 +68,7 @@ export default function CantonMainForm() {
 
       if (error) throw error;
 
-      alert("Canton report submitted successfully!");
+      toast.success("Canton report submitted successfully!");
 
       // Reset Form
       setProdDate("");
@@ -80,8 +82,7 @@ export default function CantonMainForm() {
       setSelectedLines(["Line 1"]);
       setAdditionalRemarks("");
     } catch (error: any) {
-      console.error(error);
-      alert(error.message);
+      toast.danger(error.message);
     } finally {
       setLoading(false);
     }
@@ -240,8 +241,13 @@ export default function CantonMainForm() {
         />
       </div>
 
-      <Button type="submit" className="w-full md:w-auto">
-        Submit Canton Report
+      <Button type="submit" className="w-full md:w-auto" isPending={loading}>
+        {({ isPending }) => (
+          <>
+            {isPending ? <Spinner color="current" size="sm" /> : null}
+            Submit Canton Report
+          </>
+        )}
       </Button>
     </form>
   );

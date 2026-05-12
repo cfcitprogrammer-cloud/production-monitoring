@@ -8,6 +8,8 @@ import {
   Button,
   Input,
   Select,
+  Spinner,
+  toast,
 } from "@heroui/react";
 
 import type { Key } from "@heroui/react";
@@ -27,7 +29,7 @@ type ItemCode = {
 export default function SFBlendingForm() {
   const [loading, setLoading] = useState(true);
 
-  const [_, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [prodDate, setProdDate] = useState("");
 
   const [shift, setShift] = useState<string | null>(null);
@@ -148,7 +150,7 @@ export default function SFBlendingForm() {
     e.preventDefault();
 
     if (items.length === 0) {
-      alert("Add items first");
+      toast.info("Add items first");
 
       return;
     }
@@ -169,12 +171,12 @@ export default function SFBlendingForm() {
       const { error } = await supabase.from("sf_blending").insert(payload);
 
       if (error) {
-        alert(error.message);
+        toast.danger(error.message);
 
         return;
       }
 
-      alert("Blending form submitted!");
+      toast.danger("Blending form submitted!");
 
       // reset
 
@@ -362,7 +364,14 @@ export default function SFBlendingForm() {
 
       {/* SUBMIT */}
 
-      <Button type="submit">Submit Blending Form</Button>
+      <Button type="submit" isPending={submitting}>
+        {({ isPending }) => (
+          <>
+            {isPending ? <Spinner color="current" size="sm" /> : null}
+            Submit Blending Form
+          </>
+        )}
+      </Button>
     </form>
   );
 }

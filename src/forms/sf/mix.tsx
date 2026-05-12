@@ -8,6 +8,8 @@ import {
   Button,
   Input,
   Select,
+  Spinner,
+  toast,
 } from "@heroui/react";
 
 import type { Key } from "@heroui/react";
@@ -122,7 +124,7 @@ export default function SFMixForm() {
     e.preventDefault();
 
     if (items.length === 0) {
-      alert("Add items first");
+      toast.info("Add items first");
       return;
     }
 
@@ -138,11 +140,11 @@ export default function SFMixForm() {
       const { error } = await supabase.from("sf_mix").insert(payload);
 
       if (error) {
-        alert(error.message);
+        toast.danger(error.message);
         return;
       }
 
-      alert("Mix form submitted!");
+      toast.success("Mix form submitted!");
 
       setItems([]);
       setSelectedKey(null);
@@ -308,8 +310,13 @@ export default function SFMixForm() {
       </div>
 
       {/* SUBMIT */}
-      <Button type="submit" isDisabled={submitting}>
-        Submit Mix Form
+      <Button type="submit" isPending={submitting}>
+        {({ isPending }) => (
+          <>
+            {isPending ? <Spinner color="current" size="sm" /> : null}
+            Submit Mix Form
+          </>
+        )}
       </Button>
     </form>
   );

@@ -8,6 +8,8 @@ import {
   Button,
   Input,
   Select,
+  Spinner,
+  toast,
 } from "@heroui/react";
 
 import type { Key } from "@heroui/react";
@@ -25,7 +27,7 @@ type ItemCode = {
 
 export default function BHPackingForm() {
   const [loading, setLoading] = useState(true);
-  const [_, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const [itemCodes, setItemCodes] = useState<ItemCode[]>([]);
   const [prodDate, setProdDate] = useState("");
@@ -125,7 +127,7 @@ export default function BHPackingForm() {
     e.preventDefault();
 
     if (items.length === 0) {
-      alert("Add items first");
+      toast.info("Add items first");
       return;
     }
 
@@ -141,11 +143,11 @@ export default function BHPackingForm() {
       const { error } = await supabase.from("bh_packing").insert(payload);
 
       if (error) {
-        alert(error.message);
+        toast.danger(error.message);
         return;
       }
 
-      alert("Packing form submitted!");
+      toast.success("Packing form submitted!");
 
       setItems([]);
       setSelectedKey(null);
@@ -310,7 +312,14 @@ export default function BHPackingForm() {
       </div>
 
       {/* SUBMIT */}
-      <Button type="submit">Submit Packing Form</Button>
+      <Button type="submit" isPending={submitting}>
+        {({ isPending }) => (
+          <>
+            {isPending ? <Spinner color="current" size="sm" /> : null}
+            Submit Packing Form
+          </>
+        )}
+      </Button>
     </form>
   );
 }

@@ -9,6 +9,8 @@ import {
   Checkbox,
   CheckboxGroup,
   Button,
+  Spinner,
+  toast,
 } from "@heroui/react";
 
 import { supabase } from "../../utils/supabase";
@@ -34,7 +36,7 @@ export default function SFMainForm() {
 
   const [selectedFryers, setSelectedFryers] = useState<string[]>(["Fryer 1"]);
 
-  const [_, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // ======================
   // CHECKBOX STATE
@@ -79,16 +81,14 @@ export default function SFMainForm() {
         .select();
 
       if (error) {
-        console.error(error);
-
-        alert(error.message);
+        toast.danger(error.message);
 
         return;
       }
 
       console.log(data);
 
-      alert("Overview submitted successfully!");
+      toast.success("Overview submitted successfully!");
 
       // ======================
       // RESET FORM
@@ -107,8 +107,8 @@ export default function SFMainForm() {
       setAdditionalRemarks("");
 
       setSelectedFryers(["Fryer 1"]);
-    } catch (error) {
-      console.error(error);
+    } catch (error: any) {
+      toast.danger(error.message);
     } finally {
       setLoading(false);
     }
@@ -290,7 +290,14 @@ export default function SFMainForm() {
 
       {/* SUBMIT */}
 
-      <Button type="submit">Submit Overview</Button>
+      <Button type="submit" isPending={loading}>
+        {({ isPending }) => (
+          <>
+            {isPending ? <Spinner color="current" size="sm" /> : null}
+            Submit Overview
+          </>
+        )}
+      </Button>
     </form>
   );
 }

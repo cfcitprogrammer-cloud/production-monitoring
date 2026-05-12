@@ -9,6 +9,7 @@ import {
   CheckboxGroup,
   Button,
   Spinner,
+  toast,
 } from "@heroui/react";
 
 import { supabase } from "../../utils/supabase";
@@ -76,7 +77,7 @@ export default function BHMainForm() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("bh_overview")
         .insert([
           {
@@ -120,14 +121,11 @@ export default function BHMainForm() {
         .select();
 
       if (error) {
-        console.error(error);
-        alert(error.message);
+        toast.danger(error.message);
         return;
       }
 
-      console.log(data);
-
-      alert("Overview submitted successfully!");
+      toast.success("Overview submitted successfully!");
 
       // ======================
       // RESET FORM

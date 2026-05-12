@@ -8,6 +8,8 @@ import {
   Button,
   Input,
   Select,
+  Spinner,
+  toast,
 } from "@heroui/react";
 
 import type { Key } from "@heroui/react";
@@ -27,7 +29,7 @@ type ItemCode = {
 export default function SFPremixForm() {
   const [loading, setLoading] = useState(true);
 
-  const [_, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const [itemCodes, setItemCodes] = useState<ItemCode[]>([]);
 
@@ -151,7 +153,7 @@ export default function SFPremixForm() {
     e.preventDefault();
 
     if (items.length === 0) {
-      alert("Add items first");
+      toast.info("Add items first");
 
       return;
     }
@@ -172,12 +174,12 @@ export default function SFPremixForm() {
       const { error } = await supabase.from("sf_premix").insert(payload);
 
       if (error) {
-        alert(error.message);
+        toast.danger(error.message);
 
         return;
       }
 
-      alert("Premix form submitted!");
+      toast.success("Premix form submitted!");
 
       // reset
 
@@ -365,7 +367,14 @@ export default function SFPremixForm() {
 
       {/* SUBMIT */}
 
-      <Button type="submit">Submit Premix Form</Button>
+      <Button type="submit" isPending={submitting}>
+        {({ isPending }) => (
+          <>
+            {isPending ? <Spinner color="current" size="sm" /> : null}
+            Submitting Premix Form
+          </>
+        )}
+      </Button>
     </form>
   );
 }

@@ -10,6 +10,8 @@ import {
   Button,
   Input,
   Select,
+  Spinner,
+  toast,
 } from "@heroui/react";
 
 import type { Key } from "@heroui/react";
@@ -131,7 +133,7 @@ export default function SFFGForm() {
     e.preventDefault();
 
     if (items.length === 0) {
-      alert("Add items first");
+      toast.info("Add items first");
       return;
     }
 
@@ -148,11 +150,11 @@ export default function SFFGForm() {
       const { error } = await supabase.from("sf_fg").insert(payload);
 
       if (error) {
-        alert(error.message);
+        toast.danger(error.message);
         return;
       }
 
-      alert("FG form submitted!");
+      toast.success("FG form submitted!");
 
       setItems([]);
       setSelectedKey(null);
@@ -331,8 +333,13 @@ export default function SFFGForm() {
       </div>
 
       {/* SUBMIT */}
-      <Button type="submit" isDisabled={submitting}>
-        Submit FG Form
+      <Button type="submit" isPending={submitting}>
+        {({ isPending }) => (
+          <>
+            {isPending ? <Spinner color="current" size="sm" /> : null}
+            Submit FG Form
+          </>
+        )}
       </Button>
     </form>
   );

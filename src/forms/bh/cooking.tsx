@@ -8,6 +8,8 @@ import {
   Button,
   Input,
   Select,
+  Spinner,
+  toast,
 } from "@heroui/react";
 
 import type { Key } from "@heroui/react";
@@ -25,7 +27,7 @@ type ItemCode = {
 
 export default function BHCookingForm() {
   const [loading, setLoading] = useState(true);
-  const [_, setSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const [itemCodes, setItemCodes] = useState<ItemCode[]>([]);
   const [prodDate, setProdDate] = useState("");
@@ -121,7 +123,7 @@ export default function BHCookingForm() {
     e.preventDefault();
 
     if (items.length === 0) {
-      alert("Add items first");
+      toast.info("Add items first");
       return;
     }
 
@@ -137,11 +139,11 @@ export default function BHCookingForm() {
       const { error } = await supabase.from("bh_cooking").insert(payload);
 
       if (error) {
-        alert(error.message);
+        toast.danger(error.message);
         return;
       }
 
-      alert("Cooking form submitted!");
+      toast.success("Cooking form submitted!");
 
       setItems([]);
       setSelectedKey(null);
@@ -309,7 +311,14 @@ export default function BHCookingForm() {
       </div>
 
       {/* SUBMIT */}
-      <Button type="submit">Submit Cooking Form</Button>
+      <Button type="submit" isPending={submitting}>
+        {({ isPending }) => (
+          <>
+            {isPending ? <Spinner color="current" size="sm" /> : null}
+            Submit Cooking For
+          </>
+        )}
+      </Button>
     </form>
   );
 }
