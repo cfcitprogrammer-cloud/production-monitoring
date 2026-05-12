@@ -93,7 +93,7 @@ export default function SFPremixForm() {
         supabase
           .from("sf_sku")
           .select("id, item_code")
-          .eq("type", "premix")
+          .eq("type", "flavoring")
           .order("item_code"),
       ]);
 

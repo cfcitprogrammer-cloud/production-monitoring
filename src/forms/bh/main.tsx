@@ -8,6 +8,7 @@ import {
   Checkbox,
   CheckboxGroup,
   Button,
+  Spinner,
 } from "@heroui/react";
 
 import { supabase } from "../../utils/supabase";
@@ -54,7 +55,7 @@ export default function BHMainForm() {
 
   const [additionalRemarks, setAdditionalRemarks] = useState("");
 
-  const [_, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // ======================
   // CHECKBOX STATE
@@ -502,7 +503,14 @@ export default function BHMainForm() {
 
       {/* SUBMIT */}
 
-      <Button type="submit">Submit Overview</Button>
+      <Button type="submit" isPending={loading}>
+        {({ isPending }) => (
+          <>
+            {isPending ? <Spinner color="current" size="sm" /> : null}
+            Submit Overview
+          </>
+        )}
+      </Button>
     </form>
   );
 }
