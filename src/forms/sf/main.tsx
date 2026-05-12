@@ -164,6 +164,7 @@ export default function SFMainForm() {
           <Select.Popover>
             <ListBox>
               <ListBox.Item id="day">Day Shift</ListBox.Item>
+              <ListBox.Item id="regular">Regular Shift</ListBox.Item>
 
               <ListBox.Item id="night">Night Shift</ListBox.Item>
             </ListBox>
@@ -192,9 +193,9 @@ export default function SFMainForm() {
             <ListBox>
               <ListBox.Item id="startup">Start Up</ListBox.Item>
 
-              <ListBox.Item id="normal">Normal Operation</ListBox.Item>
+              <ListBox.Item id="regular">Regular Operation</ListBox.Item>
 
-              <ListBox.Item id="shutdown">Shutdown</ListBox.Item>
+              <ListBox.Item id="last-prod">Last Production</ListBox.Item>
             </ListBox>
           </Select.Popover>
         </Select>

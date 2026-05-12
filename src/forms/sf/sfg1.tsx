@@ -42,12 +42,13 @@ export default function SFBlendingForm() {
   const [loading, setLoading] = useState(true);
 
   const [_, setSubmitting] = useState(false);
+  const [prodDate, setProdDate] = useState("");
+
+  const [shift, setShift] = useState<string | null>(null);
+
+  const [opType, setOpType] = useState<string | null>(null);
 
   const [itemCodes, setItemCodes] = useState<ItemCode[]>([]);
-
-  const [overviewRows, setOverviewRows] = useState<OverviewRow[]>([]);
-
-  const [selectedShift, setSelectedShift] = useState<ShiftOption | null>(null);
 
   const [selectedKey, setSelectedKey] = useState<Key | null>(null);
 
@@ -87,28 +88,16 @@ export default function SFBlendingForm() {
     const fetchData = async () => {
       setLoading(true);
 
-      const [codesRes, overviewRes] = await Promise.all([
+      const [codesRes] = await Promise.all([
         supabase
           .from("sf_sku")
           .select("id, item_code")
           .eq("type", "blending")
           .order("item_code"),
-
-        // IMPORTANT:
-        // use sf_overview not bh_overview
-
-        supabase
-          .from("sf_overview")
-          .select("uid, prod_date, shift")
-          .in("prod_date", [today, yesterday]),
       ]);
 
       if (codesRes.data) {
         setItemCodes(codesRes.data);
-      }
-
-      if (overviewRes.data) {
-        setOverviewRows(overviewRes.data);
       }
 
       setLoading(false);
@@ -116,22 +105,6 @@ export default function SFBlendingForm() {
 
     fetchData();
   }, [today, yesterday]);
-
-  // ======================
-  // SHIFT OPTIONS
-  // ======================
-
-  const shiftOptions: ShiftOption[] = overviewRows.map((row) => ({
-    id: `${row.prod_date}-${row.shift}`,
-
-    label: `${row.prod_date} ${row.shift.toUpperCase()}`,
-
-    prod_date: row.prod_date,
-
-    shift: row.shift,
-
-    uid: row.uid,
-  }));
 
   // ======================
   // ITEM OPTIONS
@@ -188,12 +161,6 @@ export default function SFBlendingForm() {
   async function submitForm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    if (!selectedShift) {
-      alert("Select a shift");
-
-      return;
-    }
-
     if (items.length === 0) {
       alert("Add items first");
 
@@ -210,7 +177,7 @@ export default function SFBlendingForm() {
 
         usage: item.usage,
 
-        prod_id: selectedShift.uid,
+        prod_id: `PROD-${prodDate}-${shift}`,
       }));
 
       const { error } = await supabase.from("sf_blending").insert(payload);
@@ -230,8 +197,6 @@ export default function SFBlendingForm() {
       setSelectedKey(null);
 
       setUsage("");
-
-      setSelectedShift(null);
     } finally {
       setSubmitting(false);
     }
@@ -243,33 +208,77 @@ export default function SFBlendingForm() {
 
   return (
     <form className="space-y-6" onSubmit={submitForm}>
-      {/* SHIFT SELECT */}
+      {/* HEADER */}
+      {/* ====================== */}
+      {/* PRODUCTION DETAILS */}
+      {/* ====================== */}
+
+      <h2 className="text-xl font-semibold">Production Details</h2>
+
+      {/* DATE */}
 
       <div>
-        <Label className="mb-2 block">Select Production Shift</Label>
+        <Label className="block mb-2">Production Date</Label>
+
+        <Input
+          type="date"
+          value={prodDate}
+          onChange={(e) => setProdDate(e.target.value)}
+        />
+      </div>
+
+      {/* SHIFT */}
+
+      <div>
+        <Label className="block mb-2">Shift</Label>
 
         <Select
-          className="w-full sm:w-[320px]"
-          selectedKey={selectedShift?.id ?? null}
+          className="w-[256px]"
+          selectedKey={shift}
           onSelectionChange={(key) => {
-            const found = shiftOptions.find((s) => s.id === String(key));
-
-            setSelectedShift(found ?? null);
+            setShift(String(key));
           }}
         >
           <Select.Trigger>
             <Select.Value />
-
             <Select.Indicator />
           </Select.Trigger>
 
           <Select.Popover>
             <ListBox>
-              {shiftOptions.map((s) => (
-                <ListBox.Item key={s.id} id={s.id}>
-                  {s.label}
-                </ListBox.Item>
-              ))}
+              <ListBox.Item id="day">Day Shift</ListBox.Item>
+              <ListBox.Item id="regular">Regular Shift</ListBox.Item>
+
+              <ListBox.Item id="night">Night Shift</ListBox.Item>
+            </ListBox>
+          </Select.Popover>
+        </Select>
+      </div>
+
+      {/* OPERATION TYPE */}
+
+      <div>
+        <Label className="block mb-2">Operation Type</Label>
+
+        <Select
+          className="w-[256px]"
+          selectedKey={opType}
+          onSelectionChange={(key) => {
+            setOpType(String(key));
+          }}
+        >
+          <Select.Trigger>
+            <Select.Value />
+            <Select.Indicator />
+          </Select.Trigger>
+
+          <Select.Popover>
+            <ListBox>
+              <ListBox.Item id="startup">Start Up</ListBox.Item>
+
+              <ListBox.Item id="regular">Regular Operation</ListBox.Item>
+
+              <ListBox.Item id="last-prod">Last Production</ListBox.Item>
             </ListBox>
           </Select.Popover>
         </Select>

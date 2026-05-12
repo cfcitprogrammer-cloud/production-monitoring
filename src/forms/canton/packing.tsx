@@ -41,10 +41,14 @@ export default function CantonPackingForm() {
   const [submitting, setSubmitting] = useState(false);
 
   const [itemCodes, setItemCodes] = useState<ItemCode[]>([]);
-  const [overviewRows, setOverviewRows] = useState<OverviewRow[]>([]);
+
+  const [prodDate, setProdDate] = useState("");
+
+  const [shift, setShift] = useState<string | null>(null);
+
+  const [opType, setOpType] = useState<string | null>(null);
 
   // Form State
-  const [selectedShift, setSelectedShift] = useState<ShiftOption | null>(null);
   const [selectedKey, setSelectedKey] = useState<Key | null>(null);
   const [kgs, setKgs] = useState("");
   const [qty, setQty] = useState("");
@@ -74,30 +78,19 @@ export default function CantonPackingForm() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const [codesRes, overviewRes] = await Promise.all([
+      const [codesRes] = await Promise.all([
         supabase
           .from("bihon_sku")
           .select("id, item_code")
           .eq("type", "packing_bihon")
           .order("item_code"),
-        supabase
-          .from("bh_overview")
-          .select("uid, prod_date, shift")
-          .in("prod_date", [today, yesterday]),
       ]);
 
       if (codesRes.data) setItemCodes(codesRes.data);
-      if (overviewRes.data) setOverviewRows(overviewRes.data);
       setLoading(false);
     };
     fetchData();
   }, [today, yesterday]);
-
-  const shiftOptions: ShiftOption[] = overviewRows.map((row) => ({
-    id: `${row.prod_date}-${row.shift}`,
-    label: `${row.prod_date} ${row.shift.toUpperCase()}`,
-    uid: row.uid,
-  }));
 
   const itemsList = itemCodes.map((i) => ({
     id: i.item_code,
@@ -138,7 +131,7 @@ export default function CantonPackingForm() {
   // ======================
   async function submitPackingForm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!selectedShift || items.length === 0) {
+    if (items.length === 0) {
       alert("Please select a shift and add at least one item.");
       return;
     }
@@ -146,7 +139,7 @@ export default function CantonPackingForm() {
     setSubmitting(true);
     try {
       const payload = items.map((item) => ({
-        prod_id: selectedShift.uid,
+        prod_id: `PROD-${prodDate}-${shift}`,
         item_code: item.item_code,
         kgs: item.kgs,
         qty: item.qty,
@@ -158,7 +151,6 @@ export default function CantonPackingForm() {
 
       alert("Packing form submitted!");
       setItems([]);
-      setSelectedShift(null);
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -170,29 +162,76 @@ export default function CantonPackingForm() {
 
   return (
     <form className="space-y-6" onSubmit={submitPackingForm}>
-      {/* SHIFT SELECTION */}
+      {/* HEADER */}
+      {/* ====================== */}
+      {/* PRODUCTION DETAILS */}
+      {/* ====================== */}
+
+      <h2 className="text-xl font-semibold">Production Details</h2>
+
+      {/* DATE */}
+
       <div>
-        <Label className="mb-2 block font-bold">Production Shift</Label>
+        <Label className="block mb-2">Production Date</Label>
+
+        <Input
+          type="date"
+          value={prodDate}
+          onChange={(e) => setProdDate(e.target.value)}
+        />
+      </div>
+
+      {/* SHIFT */}
+
+      <div>
+        <Label className="block mb-2">Shift</Label>
+
         <Select
-          className="w-full sm:w-[320px]"
-          placeholder="Select a shift"
-          selectedKey={selectedShift?.id ?? null}
+          className="w-[256px]"
+          selectedKey={shift}
           onSelectionChange={(key) => {
-            const found = shiftOptions.find((s) => s.id === String(key));
-            setSelectedShift(found ?? null);
+            setShift(String(key));
           }}
         >
           <Select.Trigger>
             <Select.Value />
             <Select.Indicator />
           </Select.Trigger>
+
           <Select.Popover>
             <ListBox>
-              {shiftOptions.map((s) => (
-                <ListBox.Item key={s.id} id={s.id}>
-                  {s.label}
-                </ListBox.Item>
-              ))}
+              <ListBox.Item id="day">Day Shift</ListBox.Item>
+
+              <ListBox.Item id="night">Night Shift</ListBox.Item>
+            </ListBox>
+          </Select.Popover>
+        </Select>
+      </div>
+
+      {/* OPERATION TYPE */}
+
+      <div>
+        <Label className="block mb-2">Operation Type</Label>
+
+        <Select
+          className="w-[256px]"
+          selectedKey={opType}
+          onSelectionChange={(key) => {
+            setOpType(String(key));
+          }}
+        >
+          <Select.Trigger>
+            <Select.Value />
+            <Select.Indicator />
+          </Select.Trigger>
+
+          <Select.Popover>
+            <ListBox>
+              <ListBox.Item id="startup">Start Up</ListBox.Item>
+
+              <ListBox.Item id="regular">Regular Operation</ListBox.Item>
+
+              <ListBox.Item id="last-prod">Last Production</ListBox.Item>
             </ListBox>
           </Select.Popover>
         </Select>

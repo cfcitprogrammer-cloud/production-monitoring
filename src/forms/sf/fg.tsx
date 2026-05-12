@@ -45,10 +45,11 @@ export default function SFFGForm() {
   const [submitting, setSubmitting] = useState(false);
 
   const [itemCodes, setItemCodes] = useState<ItemCode[]>([]);
-  const [overviewRows, setOverviewRows] = useState<OverviewRow[]>([]);
+  const [prodDate, setProdDate] = useState("");
 
-  const [selectedShift, setSelectedShift] = useState<ShiftOption | null>(null);
+  const [shift, setShift] = useState<string | null>(null);
 
+  const [opType, setOpType] = useState<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<Key | null>(null);
   const [quantity, setQuantity] = useState("");
   const [unit, setUnit] = useState<Key | null>(null);
@@ -85,35 +86,21 @@ export default function SFFGForm() {
     const fetchData = async () => {
       setLoading(true);
 
-      const [codesRes, overviewRes] = await Promise.all([
+      const [codesRes] = await Promise.all([
         supabase
           .from("sf_sku")
           .select("id, item_code")
           .eq("type", "fg")
           .order("item_code"),
-
-        supabase
-          .from("sf_overview")
-          .select("uid, prod_date, shift")
-          .in("prod_date", [today, yesterday]),
       ]);
 
       if (codesRes.data) setItemCodes(codesRes.data);
-      if (overviewRes.data) setOverviewRows(overviewRes.data);
 
       setLoading(false);
     };
 
     fetchData();
   }, [today, yesterday]);
-
-  const shiftOptions: ShiftOption[] = overviewRows.map((row) => ({
-    id: `${row.prod_date}-${row.shift}`,
-    label: `${row.prod_date} ${row.shift.toUpperCase()}`,
-    prod_date: row.prod_date,
-    shift: row.shift,
-    uid: row.uid,
-  }));
 
   const itemsList = itemCodes.map((i) => ({
     id: i.item_code,
@@ -157,11 +144,6 @@ export default function SFFGForm() {
   async function submitFGForm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
-    if (!selectedShift) {
-      alert("Select a shift");
-      return;
-    }
-
     if (items.length === 0) {
       alert("Add items first");
       return;
@@ -174,7 +156,7 @@ export default function SFFGForm() {
         item_code: item.itemCode,
         qty: Number(item.quantity),
         unit: item.unit,
-        prod_id: selectedShift.uid,
+        prod_id: `PROD-${prodDate}-${shift}`,
       }));
 
       const { error } = await supabase.from("sf_fg").insert(payload);
@@ -190,7 +172,6 @@ export default function SFFGForm() {
       setSelectedKey(null);
       setQuantity("");
       setUnit(null);
-      setSelectedShift(null);
     } finally {
       setSubmitting(false);
     }
@@ -202,16 +183,35 @@ export default function SFFGForm() {
 
   return (
     <form className="space-y-6" onSubmit={submitFGForm}>
-      {/* SHIFT */}
+      {/* HEADER */}
+      {/* ====================== */}
+      {/* PRODUCTION DETAILS */}
+      {/* ====================== */}
+
+      <h2 className="text-xl font-semibold">Production Details</h2>
+
+      {/* DATE */}
+
       <div>
-        <Label className="mb-2 block">Select Production Shift</Label>
+        <Label className="block mb-2">Production Date</Label>
+
+        <Input
+          type="date"
+          value={prodDate}
+          onChange={(e) => setProdDate(e.target.value)}
+        />
+      </div>
+
+      {/* SHIFT */}
+
+      <div>
+        <Label className="block mb-2">Shift</Label>
 
         <Select
-          className="w-full sm:w-[320px]"
-          selectedKey={selectedShift?.id ?? null}
+          className="w-[256px]"
+          selectedKey={shift}
           onSelectionChange={(key) => {
-            const found = shiftOptions.find((s) => s.id === String(key));
-            setSelectedShift(found ?? null);
+            setShift(String(key));
           }}
         >
           <Select.Trigger>
@@ -221,11 +221,39 @@ export default function SFFGForm() {
 
           <Select.Popover>
             <ListBox>
-              {shiftOptions.map((s) => (
-                <ListBox.Item key={s.id} id={s.id}>
-                  {s.label}
-                </ListBox.Item>
-              ))}
+              <ListBox.Item id="day">Day Shift</ListBox.Item>
+              <ListBox.Item id="regular">Regular Shift</ListBox.Item>
+
+              <ListBox.Item id="night">Night Shift</ListBox.Item>
+            </ListBox>
+          </Select.Popover>
+        </Select>
+      </div>
+
+      {/* OPERATION TYPE */}
+
+      <div>
+        <Label className="block mb-2">Operation Type</Label>
+
+        <Select
+          className="w-[256px]"
+          selectedKey={opType}
+          onSelectionChange={(key) => {
+            setOpType(String(key));
+          }}
+        >
+          <Select.Trigger>
+            <Select.Value />
+            <Select.Indicator />
+          </Select.Trigger>
+
+          <Select.Popover>
+            <ListBox>
+              <ListBox.Item id="startup">Start Up</ListBox.Item>
+
+              <ListBox.Item id="regular">Regular Operation</ListBox.Item>
+
+              <ListBox.Item id="last-prod">Last Production</ListBox.Item>
             </ListBox>
           </Select.Popover>
         </Select>
