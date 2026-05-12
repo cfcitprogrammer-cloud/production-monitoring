@@ -24,18 +24,6 @@ type ItemCode = {
   item_code: string;
 };
 
-type OverviewRow = {
-  prod_date: string;
-  shift: "day" | "night";
-  uid: string;
-};
-
-type ShiftOption = {
-  id: string;
-  label: string;
-  uid: string;
-};
-
 export default function CantonPackingForm() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);

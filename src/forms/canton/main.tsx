@@ -30,7 +30,7 @@ export default function CantonMainForm() {
 
   const [selectedLines, setSelectedLines] = useState<string[]>(["Line 1"]);
   const [additionalRemarks, setAdditionalRemarks] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [_, setLoading] = useState(false);
 
   // ======================
   // CHECKBOX LOGIC
@@ -47,7 +47,7 @@ export default function CantonMainForm() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.from("canton_overview").insert([
+      const { error } = await supabase.from("canton_overview").insert([
         {
           // UID Generation: PROD-YYYY-MM-DD-SHIFT
           uid: `PROD-${prodDate}-${shift}`,

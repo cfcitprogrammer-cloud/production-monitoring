@@ -23,20 +23,6 @@ type ItemCode = {
   item_code: string;
 };
 
-type OverviewRow = {
-  prod_date: string;
-  shift: "day" | "night";
-  uid: string;
-};
-
-type ShiftOption = {
-  id: string;
-  label: string;
-  prod_date: string;
-  shift: string;
-  uid: string;
-};
-
 export default function BHPackingForm() {
   const [loading, setLoading] = useState(true);
   const [_, setSubmitting] = useState(false);
