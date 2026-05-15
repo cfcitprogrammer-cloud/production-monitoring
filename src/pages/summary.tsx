@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, Fragment } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { supabase } from "../utils/supabase";
 import { Label } from "@heroui/react";
 import * as XLSX from "xlsx";
@@ -10,214 +10,251 @@ import Page from "../ui/_page";
    TYPES
 ========================= */
 
-type OverviewRow = {
-  prod_date: string;
-  shift: "day" | "night";
-  uid: string;
-};
-
-type ShiftOption = {
-  id: string;
-  label: string;
-  prod_date: string;
-  shift: string;
-  uid: string;
-};
-
 type Row = {
   item_code: string;
   value: number;
   unit?: string;
 };
 
+type ModuleConfig = {
+  key: string;
+  label: string;
+  table: string;
+  valueKey: string;
+  hasUnit: boolean;
+};
+
 /* =========================
    MODULE CONFIG SYSTEM
 ========================= */
 
-const MODULES = {
+const MODULES: Record<string, ModuleConfig[]> = {
   snackfood: [
-    { key: "frying", label: "Frying", table: "sf_frying", valueKey: "weight" },
-    { key: "blending", label: "Blending", table: "sf_blending", valueKey: "usage" },
-    { key: "premix", label: "Premix", table: "sf_premix", valueKey: "usage" },
-    { key: "mixing", label: "Mixing", table: "sf_mix", valueKey: "weight" },
-    { key: "flavoring", label: "Flavoring", table: "sf_flavoring", valueKey: "weight" },
-    { key: "piece", label: "Piece", table: "sf_piece", valueKey: "pcs" },
-    { key: "fg", label: "FG", table: "sf_fg", valueKey: "quantity" },
+    {
+      key: "blending",
+      label: "Blending",
+      table: "sf_blending",
+      valueKey: "usage",
+      hasUnit: false,
+    },
+    {
+      key: "premix",
+      label: "Premix",
+      table: "sf_premix",
+      valueKey: "usage",
+      hasUnit: false,
+    },
+    {
+      key: "mixing",
+      label: "Mixing",
+      table: "sf_mix",
+      valueKey: "weight",
+      hasUnit: false,
+    },
+    {
+      key: "frying",
+      label: "Frying",
+      table: "sf_frying",
+      valueKey: "weight",
+      hasUnit: false,
+    },
+    {
+      key: "flavoring",
+      label: "Flavoring",
+      table: "sf_flavoring",
+      valueKey: "weight",
+      hasUnit: false,
+    },
+    {
+      key: "piece",
+      label: "Piece",
+      table: "sf_piece",
+      valueKey: "pcs",
+      hasUnit: false,
+    },
+    { key: "fg", label: "FG", table: "sf_fg", valueKey: "qty", hasUnit: false },
   ],
-
   bihon: [
-    { key: "cooking", label: "Cooking", table: "bh_cooking", valueKey: "weight" },
-    { key: "packing", label: "Packing", table: "bh_packing", valueKey: "weight" },
-    { key: "fg", label: "FG", table: "bh_fg", valueKey: "quantity" },
+    {
+      key: "cooking",
+      label: "Cooking",
+      table: "bh_cooking",
+      valueKey: "weight",
+      hasUnit: false,
+    },
+    {
+      key: "packing",
+      label: "Packing",
+      table: "bh_packing",
+      valueKey: "qty",
+      hasUnit: false,
+    },
+    { key: "fg", label: "FG", table: "bh_fg", valueKey: "qty", hasUnit: false },
   ],
-} as const;
+};
 
-/* =========================
-   MAIN
-========================= */
-
-export default function SFProductionSummary() {
-  const [loading, setLoading] = useState(true);
-  const [overviewRows, setOverviewRows] = useState<OverviewRow[]>([]);
-  const [selectedDate, setSelectedDate] = useState(() => formatDate(new Date()));
-  const [productType, setProductType] = useState<"bihon" | "snackfood">("bihon");
-  const [selectedShift, setSelectedShift] = useState<ShiftOption | null>(null);
+export default function ProductionSummary() {
+  const [loading, setLoading] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(
+    () => new Date().toISOString().split("T")[0],
+  );
+  const [productType, setProductType] = useState<"bihon" | "snackfood">(
+    "bihon",
+  );
+  const [selectedShift, setSelectedShift] = useState<string>("");
   const [dataMap, setDataMap] = useState<Record<string, Row[]>>({});
-
-  /* =========================
-     HELPERS
-  ========================= */
-
-  function formatDate(d: Date) {
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  }
-
-  const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
-
-  const today = useMemo(() => formatDate(new Date()), []);
-  const yesterday = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return formatDate(d);
-  }, []);
 
   const modules = MODULES[productType];
 
-  // Logic to determine if a module column should show a unit
-  const hasUnit = (moduleKey: string) => {
-    return dataMap[moduleKey]?.some((row) => row.unit && row.unit.trim() !== "");
+  /* =========================
+      HELPERS
+  ========================= */
+  const capitalize = (str: string) =>
+    str.charAt(0).toUpperCase() + str.slice(1);
+  const sum = (arr: Row[] = []) =>
+    arr.reduce((a, b) => a + (Number(b.value) || 0), 0);
+
+  const shouldShowUnit = (m: ModuleConfig) => {
+    if (!m.hasUnit) return false;
+    return dataMap[m.key]?.some((row) => row.unit && row.unit.trim() !== "");
   };
 
   /* =========================
-     FETCHING
+      FETCHING LOGIC
   ========================= */
-
   useEffect(() => {
-    const fetchOverview = async () => {
+    const fetchAllModuleData = async () => {
+      if (!selectedShift || !selectedDate) {
+        setDataMap({});
+        return;
+      }
+
       setLoading(true);
-      const table = productType === "bihon" ? "bh_overview" : "sf_overview";
-      const { data } = await supabase
-        .from(table)
-        .select("uid, prod_date, shift")
-        .in("prod_date", [today, yesterday]);
+      const targetId = `PROD-${selectedDate}-${selectedShift.toLowerCase()}`;
 
-      setOverviewRows(data || []);
-      setLoading(false);
-    };
-    fetchOverview();
-  }, [productType, today, yesterday]);
+      console.log("🔍 Fetching data for ID:", targetId);
 
-  useEffect(() => {
-    if (!selectedShift?.uid) {
-      setDataMap({});
-      return;
-    }
-
-    const fetchModules = async () => {
-      setLoading(true);
       const results: Record<string, Row[]> = {};
 
-      await Promise.all(
-        modules.map(async (m) => {
-          const { data } = await supabase
-            .from(m.table)
-            .select("*")
-            .eq("prod_id", selectedShift.uid);
+      try {
+        await Promise.all(
+          modules.map(async (m) => {
+            // FIX: Casting the template literal to 'any' stops the ParserError
+            let selectStr = `item_code, ${m.valueKey}`;
+            if (m.hasUnit) selectStr += `, unit`;
 
-          results[m.key] = (data || []).map((r: any) => ({
-            item_code: r.item_code,
-            value: r[m.valueKey] ?? 0,
-            unit: r.unit,
-          }));
-        })
-      );
+            let { data, error } = await supabase
+              .from(m.table)
+              .select(selectStr as any) // CAST TO ANY TO FIX TYPESCRIPT ERROR
+              .eq("prod_id", targetId);
 
-      setDataMap(results);
-      setLoading(false);
+            // Fallback for missing columns
+            if (error?.message.includes("unit")) {
+              console.warn(
+                `⚠️ Table ${m.table} missing unit column. Retrying...`,
+              );
+              const retry = await supabase
+                .from(m.table)
+                .select(`item_code, ${m.valueKey}` as any)
+                .eq("prod_id", targetId);
+              data = retry.data;
+              error = retry.error;
+            }
+
+            if (error) {
+              console.error(`❌ Error fetching ${m.table}:`, error.message);
+              results[m.key] = [];
+            } else {
+              console.log(`✅ ${m.table} fetched:`, data?.length || 0, "rows");
+              results[m.key] = (data || []).map((r: any) => ({
+                item_code: r.item_code,
+                value: r[m.valueKey] ?? 0,
+                unit: r.unit ?? "",
+              }));
+            }
+          }),
+        );
+
+        console.log("📊 Final Data Map:", results);
+        setDataMap(results);
+      } catch (err) {
+        console.error("💥 Critical fetching error:", err);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    fetchModules();
-  }, [selectedShift, productType, modules]);
+    fetchAllModuleData();
+  }, [selectedDate, selectedShift, productType, modules]);
 
-  const shiftOptions: ShiftOption[] = overviewRows
-    .filter((r) => r.prod_date === selectedDate)
-    .map((row) => ({
-      id: `${row.prod_date}-${row.shift}`,
-      label: `${row.prod_date} ${row.shift.toUpperCase()}`,
-      prod_date: row.prod_date,
-      shift: row.shift,
-      uid: row.uid,
-    }));
-
-  const maxLen = Math.max(0, ...modules.map((m) => dataMap[m.key]?.length || 0));
-  const sum = (arr: Row[] = []) => arr.reduce((a, b) => a + (Number(b.value) || 0), 0);
+  const maxLen = Math.max(
+    0,
+    ...modules.map((m) => dataMap[m.key]?.length || 0),
+  );
 
   /* =========================
-     EXPORT
+      EXPORT
   ========================= */
-
   const exportToExcel = () => {
     const wsData: any[] = [];
+    wsData.push(
+      modules.flatMap((m) =>
+        shouldShowUnit(m) ? [m.label, "", ""] : [m.label, ""],
+      ),
+    );
+    wsData.push(
+      modules.flatMap((m) => {
+        const cols = ["Item Code", capitalize(m.valueKey)];
+        if (shouldShowUnit(m)) cols.push("Unit");
+        return cols;
+      }),
+    );
 
-    // Header Row 1: Labels
-    wsData.push(modules.flatMap((m) => {
-      const showUnit = hasUnit(m.key);
-      return showUnit ? [m.label, "", ""] : [m.label, ""];
-    }));
-
-    // Header Row 2: Dynamic Column Titles
-    wsData.push(modules.flatMap((m) => {
-      const cols = ["Item Code", capitalize(m.valueKey)];
-      if (hasUnit(m.key)) cols.push("Unit");
-      return cols;
-    }));
-
-    // Data Rows
     for (let i = 0; i < maxLen; i++) {
-      wsData.push(modules.flatMap((m) => {
-        const row = dataMap[m.key]?.[i];
-        const rowData = [row?.item_code ?? "", row?.value ?? ""];
-        if (hasUnit(m.key)) rowData.push(row?.unit ?? "");
-        return rowData;
-      }));
+      wsData.push(
+        modules.flatMap((m) => {
+          const row = dataMap[m.key]?.[i];
+          const rowData = [row?.item_code ?? "", row?.value ?? ""];
+          if (shouldShowUnit(m)) rowData.push(row?.unit ?? "");
+          return rowData;
+        }),
+      );
     }
 
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Summary");
-    XLSX.writeFile(wb, `production-${productType}-${selectedDate}.xlsx`);
+    XLSX.writeFile(wb, `Production_${productType}_${selectedDate}.xlsx`);
   };
-
-  if (loading && Object.keys(dataMap).length === 0) 
-    return <div className="p-10 text-center text-gray-500">Loading data...</div>;
 
   return (
     <Page>
       <div className="p-6 space-y-6">
         {/* FILTERS */}
-        <div className="flex gap-4 flex-wrap items-end bg-gray-50 p-4 rounded-lg border">
+        <div className="flex gap-4 flex-wrap items-end bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm">
           <div className="flex flex-col gap-1">
-            <Label>Date</Label>
+            <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+              Date
+            </Label>
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="border p-2 rounded bg-white"
+              className="border p-2 rounded bg-white h-[40px] text-sm focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
 
           <div className="flex flex-col gap-1">
-            <Label>Product</Label>
+            <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+              Line
+            </Label>
             <select
               value={productType}
               onChange={(e) => {
-                  setProductType(e.target.value as any);
-                  setSelectedShift(null);
+                setProductType(e.target.value as any);
+                setSelectedShift("");
               }}
-              className="border p-2 rounded bg-white h-[42px]"
+              className="border p-2 rounded bg-white h-[40px] min-w-[140px] text-sm outline-none"
             >
               <option value="bihon">Bihon</option>
               <option value="snackfood">Snackfood</option>
@@ -225,57 +262,63 @@ export default function SFProductionSummary() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <Label>Shift</Label>
+            <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+              Shift
+            </Label>
             <select
-              value={selectedShift?.id || ""}
-              onChange={(e) => {
-                const found = shiftOptions.find((s) => s.id === e.target.value);
-                setSelectedShift(found || null);
-              }}
-              className="border p-2 rounded bg-white h-[42px] min-w-[150px]"
+              value={selectedShift}
+              onChange={(e) => setSelectedShift(e.target.value)}
+              className="border p-2 rounded bg-white h-[40px] min-w-[140px] text-sm outline-none"
             >
               <option value="">Select shift</option>
-              {shiftOptions.map((s) => (
-                <option key={s.id} value={s.id}>{s.label}</option>
-              ))}
+              <option value="day">Day Shift</option>
+              <option value="night">Night Shift</option>
             </select>
           </div>
 
           <button
             onClick={exportToExcel}
-            disabled={!selectedShift}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-2 rounded h-[42px]"
+            disabled={!selectedShift || loading}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white px-6 py-2 rounded h-[40px] text-sm font-semibold transition-all shadow-sm"
           >
-            Export
+            {loading ? "Fetching Data..." : "Export Excel"}
           </button>
         </div>
 
-        {/* TABLE */}
+        {/* TABLE SECTION */}
         {!selectedShift ? (
-          <div className="p-20 text-center border-2 border-dashed rounded-lg text-gray-400">
-            Select a shift to display data.
+          <div className="p-20 text-center border-2 border-dashed rounded-xl text-gray-400 bg-white">
+            Please select a date and shift to display the summary.
           </div>
         ) : (
-          <div className="overflow-auto border rounded-lg shadow-sm">
-            <table className="w-full text-sm border-collapse bg-white">
+          <div className="overflow-auto border rounded-xl shadow-sm bg-white">
+            <table className="w-full text-sm border-collapse">
               <thead>
-                <tr className="bg-gray-800 text-white text-center">
+                <tr className="bg-slate-800 text-white">
                   {modules.map((m) => (
-                    <th 
-                      key={m.key} 
-                      colSpan={hasUnit(m.key) ? 3 : 2} 
-                      className="py-2 border-x border-gray-700"
+                    <th
+                      key={m.key}
+                      colSpan={shouldShowUnit(m) ? 3 : 2}
+                      className="py-3 px-4 border-x border-slate-700 font-bold uppercase text-[11px] tracking-widest"
                     >
                       {m.label}
                     </th>
                   ))}
                 </tr>
-                <tr className="bg-gray-100 text-gray-700 text-center border-b">
+                <tr className="bg-slate-50 text-slate-500 border-b">
                   {modules.map((m) => (
                     <Fragment key={m.key}>
-                      <th className="p-2 border-x font-semibold">Item</th>
-                      <th className="p-2 border-x font-semibold capitalize">{m.valueKey}</th>
-                      {hasUnit(m.key) && <th className="p-2 border-x font-semibold">Unit</th>}
+                      <th className="p-2 border-x font-bold text-[10px]">
+                        ITEM
+                      </th>
+                      <th className="p-2 border-x font-bold text-[10px] uppercase">
+                        {m.valueKey}
+                      </th>
+                      {shouldShowUnit(m) && (
+                        <th className="p-2 border-x font-bold text-[10px]">
+                          UNIT
+                        </th>
+                      )}
                     </Fragment>
                   ))}
                 </tr>
@@ -283,15 +326,28 @@ export default function SFProductionSummary() {
               <tbody>
                 {maxLen > 0 ? (
                   Array.from({ length: maxLen }).map((_, i) => (
-                    <tr key={i} className="text-center border-b hover:bg-gray-50">
+                    <tr
+                      key={i}
+                      className="text-center border-b hover:bg-blue-50/40 transition-colors"
+                    >
                       {modules.map((m) => {
                         const row = dataMap[m.key]?.[i];
-                        const showUnit = hasUnit(m.key);
+                        const showUnit = shouldShowUnit(m);
                         return (
                           <Fragment key={`${m.key}-${i}`}>
-                            <td className="p-2 border-x">{row?.item_code || "-"}</td>
-                            <td className="p-2 border-x">{row?.value ?? ""}</td>
-                            {showUnit && <td className="p-2 border-x text-gray-500 italic">{row?.unit || ""}</td>}
+                            <td className="p-2 border-x text-gray-600 font-mono text-[12px]">
+                              {row?.item_code || "-"}
+                            </td>
+                            <td className="p-2 border-x font-semibold text-slate-800">
+                              {row?.value !== undefined
+                                ? row.value.toLocaleString()
+                                : ""}
+                            </td>
+                            {showUnit && (
+                              <td className="p-2 border-x text-gray-400 italic text-[11px]">
+                                {row?.unit || ""}
+                              </td>
+                            )}
                           </Fragment>
                         );
                       })}
@@ -299,17 +355,40 @@ export default function SFProductionSummary() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={100} className="p-10 text-center text-gray-400">No records found.</td>
+                    <td
+                      colSpan={100}
+                      className="p-16 text-center text-gray-400"
+                    >
+                      No records found for ID:{" "}
+                      <span className="font-mono text-blue-500 font-bold">
+                        PROD-{selectedDate}-{selectedShift.toLowerCase()}
+                      </span>
+                    </td>
                   </tr>
                 )}
-                <tr className="font-bold bg-gray-50 text-center">
-                  {modules.map((m) => (
-                    <td key={m.key} colSpan={hasUnit(m.key) ? 3 : 2} className="p-3 border-x border-t-2">
-                      Total {capitalize(m.valueKey)}: {sum(dataMap[m.key]).toLocaleString()}
-                    </td>
-                  ))}
-                </tr>
               </tbody>
+              {maxLen > 0 && (
+                <tfoot>
+                  <tr className="font-bold bg-slate-100 text-blue-900 border-t-2 border-slate-200">
+                    {modules.map((m) => (
+                      <td
+                        key={m.key}
+                        colSpan={shouldShowUnit(m) ? 3 : 2}
+                        className="p-4 border-x"
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="text-[9px] text-slate-400 font-bold uppercase">
+                            Total {m.label}
+                          </span>
+                          <span className="text-lg tracking-tight">
+                            {sum(dataMap[m.key]).toLocaleString()}
+                          </span>
+                        </div>
+                      </td>
+                    ))}
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
         )}

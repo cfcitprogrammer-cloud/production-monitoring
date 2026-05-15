@@ -10,19 +10,24 @@ import {
   Select,
   Spinner,
   toast,
+  useFilter,
+  Description,
 } from "@heroui/react";
 
 import type { Key } from "@heroui/react";
 import { supabase } from "../../utils/supabase";
 
-type FGItem = {
+type CookingItem = {
   item_code: string;
   cases_bundles: number;
+  // item_description: string;
 };
 
 type ItemCode = {
   id: number;
   item_code: string;
+  item_description: string;
+  uom: string;
 };
 
 export default function BHfgForm() {
@@ -39,10 +44,12 @@ export default function BHfgForm() {
   const [selectedKey, setSelectedKey] = useState<Key | null>(null);
   const [casesBundles, setCasesBundles] = useState("");
 
-  const [items, setItems] = useState<FGItem[]>([]);
+  const [items, setItems] = useState<CookingItem[]>([]);
+
+  const { contains } = useFilter({ sensitivity: "base" });
 
   // ======================
-  // DATE HELPERS
+  // FETCH
   // ======================
 
   const today = useMemo(() => formatDate(new Date()), []);
@@ -59,10 +66,6 @@ export default function BHfgForm() {
     return `${yyyy}-${mm}-${dd}`;
   }
 
-  // ======================
-  // FETCH DATA
-  // ======================
-
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -70,7 +73,7 @@ export default function BHfgForm() {
       const [codesRes] = await Promise.all([
         supabase
           .from("bihon_sku")
-          .select("id, item_code")
+          .select("id, item_code, item_description, uom")
           .eq("type", "fg_bihon")
           .order("item_code"),
       ]);
@@ -83,13 +86,10 @@ export default function BHfgForm() {
     fetchData();
   }, [today, yesterday]);
 
-  // ======================
-  // ITEM LIST
-  // ======================
-
   const itemsList = itemCodes.map((i) => ({
     id: i.item_code,
     name: i.item_code,
+    description: i.item_description,
   }));
 
   // ======================
@@ -116,7 +116,7 @@ export default function BHfgForm() {
   };
 
   // ======================
-  // REMOVE ITEM
+  // REMOVE ITEM (NEW)
   // ======================
 
   const removeItem = (index: number) => {
@@ -124,10 +124,10 @@ export default function BHfgForm() {
   };
 
   // ======================
-  // SUBMIT (SUPABASE INSERT)
+  // SUBMIT
   // ======================
 
-  async function submitForm(e: React.FormEvent<HTMLFormElement>) {
+  async function submitCookingForm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     if (items.length === 0) {
@@ -151,7 +151,7 @@ export default function BHfgForm() {
         return;
       }
 
-      toast.success("FG form submitted!");
+      toast.success("Cooking form submitted!");
 
       setItems([]);
       setSelectedKey(null);
@@ -161,20 +161,12 @@ export default function BHfgForm() {
     }
   }
 
-  // ======================
-  // LOADING
-  // ======================
-
   if (loading) {
     return <div className="py-10 text-center">Loading...</div>;
   }
 
-  // ======================
-  // UI
-  // ======================
-
   return (
-    <form className="space-y-6" onSubmit={submitForm}>
+    <form className="space-y-6" onSubmit={submitCookingForm}>
       {/* HEADER */}
       {/* ====================== */}
       {/* PRODUCTION DETAILS */}
@@ -191,6 +183,7 @@ export default function BHfgForm() {
           type="date"
           value={prodDate}
           onChange={(e) => setProdDate(e.target.value)}
+          required
         />
       </div>
 
@@ -205,6 +198,7 @@ export default function BHfgForm() {
           onSelectionChange={(key) => {
             setShift(String(key));
           }}
+          isRequired={true}
         >
           <Select.Trigger>
             <Select.Value />
@@ -232,6 +226,7 @@ export default function BHfgForm() {
           onSelectionChange={(key) => {
             setOpType(String(key));
           }}
+          isRequired={true}
         >
           <Select.Trigger>
             <Select.Value />
@@ -250,7 +245,7 @@ export default function BHfgForm() {
         </Select>
       </div>
 
-      {/* INPUT ROW */}
+      {/* INPUT ROW (RESPONSIVE FIXED) */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="w-full sm:w-[280px]">
           <Label>Item Code</Label>
@@ -261,28 +256,39 @@ export default function BHfgForm() {
           >
             <Autocomplete.Trigger>
               <Autocomplete.Value />
+              <Autocomplete.ClearButton type="button" />
               <Autocomplete.Indicator />
             </Autocomplete.Trigger>
 
             <Autocomplete.Popover>
-              <SearchField>
-                <SearchField.Input placeholder="Search..." />
-              </SearchField>
+              <Autocomplete.Filter filter={contains}>
+                <SearchField>
+                  <SearchField.Group>
+                    <SearchField.Input placeholder="Search..." />
+                  </SearchField.Group>
+                </SearchField>
 
-              <ListBox>
-                {itemsList.map((item) => (
-                  <ListBox.Item key={item.id} id={item.id}>
-                    {item.name}
-                  </ListBox.Item>
-                ))}
-              </ListBox>
+                <ListBox items={itemsList} selectionMode="single">
+                  {(item) => (
+                    <ListBox.Item
+                      id={item.id}
+                      textValue={`${item.name}`}
+                      isDisabled={items.some((i) => i.item_code === item.id)}
+                    >
+                      <div className="flex flex-col">
+                        <Label>{item.name}</Label>
+                        <Description>{item.description}</Description>
+                      </div>
+                    </ListBox.Item>
+                  )}
+                </ListBox>
+              </Autocomplete.Filter>
             </Autocomplete.Popover>
           </Autocomplete>
         </div>
 
         <div className="w-full sm:w-[200px]">
-          <Label>Cases / Bundles</Label>
-
+          <Label>Cases/Bundles</Label>
           <Input
             type="number"
             value={casesBundles}
@@ -297,31 +303,50 @@ export default function BHfgForm() {
 
       {/* LIST */}
       <div className="space-y-3">
-        {items.map((item, i) => (
-          <div
-            key={i}
-            className="flex flex-col gap-2 rounded border p-3 sm:flex-row sm:items-end"
-          >
-            <Input
-              value={item.item_code}
-              className="w-full sm:w-[200px]"
-              disabled
-            />
+        {items.map((item, i) => {
+          const itemInfo = itemCodes.find(
+            (x) => x.item_code === item.item_code,
+          );
 
-            <Input
-              value={String(item.cases_bundles)}
-              className="w-full sm:w-[120px]"
-            />
-
-            <Button
-              type="button"
-              className="w-full sm:w-auto"
-              onPress={() => removeItem(i)}
+          return (
+            <div
+              key={i}
+              className="flex flex-col md:flex-row gap-2 rounded border p-3"
             >
-              Remove
-            </Button>
-          </div>
-        ))}
+              {/* ITEM CODE */}
+              <div>
+                <Label className="block mb-2">Item Code</Label>
+                <Input
+                  value={item.item_code}
+                  className="w-full sm:w-[200px]"
+                  disabled
+                />
+              </div>
+
+              {/* DESCRIPTION */}
+              <div>
+                <Label className="block mb-2">Item Description</Label>
+                <Input value={itemInfo?.item_description || ""} disabled />
+              </div>
+
+              {/* Cases/Bundles + REMOVE */}
+              <div>
+                <Label className="block mb-2">PC/s</Label>
+                <Input value={String(item.cases_bundles)} />
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                <Button
+                  type="button"
+                  className="w-full sm:w-auto"
+                  onPress={() => removeItem(i)}
+                >
+                  Remove
+                </Button>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* SUBMIT */}

@@ -12,6 +12,8 @@ import {
   Select,
   Spinner,
   toast,
+  Description,
+  useFilter,
 } from "@heroui/react";
 
 import type { Key } from "@heroui/react";
@@ -26,6 +28,7 @@ type FGItem = {
 type ItemCode = {
   id: number;
   item_code: string;
+  item_description: string;
 };
 
 export default function SFFGForm() {
@@ -43,6 +46,8 @@ export default function SFFGForm() {
   const [unit, setUnit] = useState<Key | null>(null);
 
   const [items, setItems] = useState<FGItem[]>([]);
+
+  const { contains } = useFilter({ sensitivity: "base" });
 
   const unitOptions = [
     { id: "pc/s", label: "pc/s" },
@@ -77,7 +82,7 @@ export default function SFFGForm() {
       const [codesRes] = await Promise.all([
         supabase
           .from("sf_sku")
-          .select("id, item_code")
+          .select("id, item_code, item_description, uom")
           .eq("type", "fg")
           .order("item_code"),
       ]);
@@ -93,6 +98,7 @@ export default function SFFGForm() {
   const itemsList = itemCodes.map((i) => ({
     id: i.item_code,
     name: i.item_code,
+    description: i.item_description,
   }));
 
   // ======================
@@ -187,6 +193,7 @@ export default function SFFGForm() {
           type="date"
           value={prodDate}
           onChange={(e) => setProdDate(e.target.value)}
+          required
         />
       </div>
 
@@ -201,6 +208,7 @@ export default function SFFGForm() {
           onSelectionChange={(key) => {
             setShift(String(key));
           }}
+          isRequired={true}
         >
           <Select.Trigger>
             <Select.Value />
@@ -210,7 +218,6 @@ export default function SFFGForm() {
           <Select.Popover>
             <ListBox>
               <ListBox.Item id="day">Day Shift</ListBox.Item>
-              <ListBox.Item id="regular">Regular Shift</ListBox.Item>
 
               <ListBox.Item id="night">Night Shift</ListBox.Item>
             </ListBox>
@@ -229,6 +236,7 @@ export default function SFFGForm() {
           onSelectionChange={(key) => {
             setOpType(String(key));
           }}
+          isRequired
         >
           <Select.Trigger>
             <Select.Value />
@@ -258,21 +266,33 @@ export default function SFFGForm() {
           >
             <Autocomplete.Trigger>
               <Autocomplete.Value />
+              <Autocomplete.ClearButton type="button" />
               <Autocomplete.Indicator />
             </Autocomplete.Trigger>
 
             <Autocomplete.Popover>
-              <SearchField>
-                <SearchField.Input placeholder="Search..." />
-              </SearchField>
+              <Autocomplete.Filter filter={contains}>
+                <SearchField>
+                  <SearchField.Group>
+                    <SearchField.Input placeholder="Search..." />
+                  </SearchField.Group>
+                </SearchField>
 
-              <ListBox>
-                {itemsList.map((item) => (
-                  <ListBox.Item key={item.id} id={item.id}>
-                    {item.name}
-                  </ListBox.Item>
-                ))}
-              </ListBox>
+                <ListBox items={itemsList} selectionMode="single">
+                  {(item) => (
+                    <ListBox.Item
+                      id={item.id}
+                      textValue={`${item.name}`}
+                      isDisabled={items.some((i) => i.itemCode === item.id)}
+                    >
+                      <div className="flex flex-col">
+                        <Label>{item.name}</Label>
+                        <Description>{item.description}</Description>
+                      </div>
+                    </ListBox.Item>
+                  )}
+                </ListBox>
+              </Autocomplete.Filter>
             </Autocomplete.Popover>
           </Autocomplete>
         </div>
@@ -316,20 +336,40 @@ export default function SFFGForm() {
 
       {/* LIST */}
       <div className="space-y-3">
-        {items.map((item, i) => (
-          <div
-            key={i}
-            className="flex flex-col gap-2 rounded border p-3 sm:flex-row sm:items-end"
-          >
-            <Input value={item.itemCode} disabled className="sm:w-[200px]" />
-            <Input value={item.quantity} disabled className="sm:w-[120px]" />
-            <Input value={item.unit} disabled className="sm:w-[120px]" />
+        {items.map((item, i) => {
+          const itemInfo = itemCodes.find((x) => x.item_code === item.itemCode);
 
-            <Button type="button" onPress={() => removeItem(i)}>
-              Remove
-            </Button>
-          </div>
-        ))}
+          return (
+            <div
+              key={i}
+              className="flex flex-col gap-2 rounded border p-3 sm:flex-row sm:items-end"
+            >
+              <div>
+                <Label className="block mb-2">Item Code</Label>
+                <Input value={item.itemCode} disabled />
+              </div>
+
+              <div>
+                <Label className="block mb-2">Item Description</Label>
+                <Input value={itemInfo?.item_description || ""} disabled />
+              </div>
+
+              <div>
+                <Label className="block mb-2">Item Code</Label>
+                <Input value={item.quantity} disabled />
+              </div>
+
+              <div>
+                <Label className="block mb-2">Item Code</Label>
+                <Input value={item.unit} disabled />
+              </div>
+
+              <Button type="button" onPress={() => removeItem(i)}>
+                Remove
+              </Button>
+            </div>
+          );
+        })}
       </div>
 
       {/* SUBMIT */}

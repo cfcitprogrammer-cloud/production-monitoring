@@ -10,6 +10,8 @@ import {
   Select,
   Spinner,
   toast,
+  useFilter,
+  Description,
 } from "@heroui/react";
 
 import type { Key } from "@heroui/react";
@@ -18,11 +20,14 @@ import { supabase } from "../../utils/supabase";
 type CookingItem = {
   item_code: string;
   weight: number;
+  // item_description: string;
 };
 
 type ItemCode = {
   id: number;
   item_code: string;
+  item_description: string;
+  uom: string;
 };
 
 export default function BHCookingForm() {
@@ -40,6 +45,8 @@ export default function BHCookingForm() {
   const [weight, setWeight] = useState("");
 
   const [items, setItems] = useState<CookingItem[]>([]);
+
+  const { contains } = useFilter({ sensitivity: "base" });
 
   // ======================
   // FETCH
@@ -66,7 +73,7 @@ export default function BHCookingForm() {
       const [codesRes] = await Promise.all([
         supabase
           .from("bihon_sku")
-          .select("id, item_code")
+          .select("id, item_code, item_description, uom")
           .eq("type", "cooking_mix")
           .order("item_code"),
       ]);
@@ -82,6 +89,7 @@ export default function BHCookingForm() {
   const itemsList = itemCodes.map((i) => ({
     id: i.item_code,
     name: i.item_code,
+    description: i.item_description,
   }));
 
   // ======================
@@ -175,6 +183,7 @@ export default function BHCookingForm() {
           type="date"
           value={prodDate}
           onChange={(e) => setProdDate(e.target.value)}
+          required
         />
       </div>
 
@@ -189,6 +198,7 @@ export default function BHCookingForm() {
           onSelectionChange={(key) => {
             setShift(String(key));
           }}
+          isRequired={true}
         >
           <Select.Trigger>
             <Select.Value />
@@ -216,6 +226,7 @@ export default function BHCookingForm() {
           onSelectionChange={(key) => {
             setOpType(String(key));
           }}
+          isRequired={true}
         >
           <Select.Trigger>
             <Select.Value />
@@ -245,21 +256,33 @@ export default function BHCookingForm() {
           >
             <Autocomplete.Trigger>
               <Autocomplete.Value />
+              <Autocomplete.ClearButton type="button" />
               <Autocomplete.Indicator />
             </Autocomplete.Trigger>
 
             <Autocomplete.Popover>
-              <SearchField>
-                <SearchField.Input placeholder="Search..." />
-              </SearchField>
+              <Autocomplete.Filter filter={contains}>
+                <SearchField>
+                  <SearchField.Group>
+                    <SearchField.Input placeholder="Search..." />
+                  </SearchField.Group>
+                </SearchField>
 
-              <ListBox>
-                {itemsList.map((item) => (
-                  <ListBox.Item key={item.id} id={item.id}>
-                    {item.name}
-                  </ListBox.Item>
-                ))}
-              </ListBox>
+                <ListBox items={itemsList} selectionMode="single">
+                  {(item) => (
+                    <ListBox.Item
+                      id={item.id}
+                      textValue={`${item.name}`}
+                      isDisabled={items.some((i) => i.item_code === item.id)}
+                    >
+                      <div className="flex flex-col">
+                        <Label>{item.name}</Label>
+                        <Description>{item.description}</Description>
+                      </div>
+                    </ListBox.Item>
+                  )}
+                </ListBox>
+              </Autocomplete.Filter>
             </Autocomplete.Popover>
           </Autocomplete>
         </div>
@@ -280,34 +303,53 @@ export default function BHCookingForm() {
 
       {/* LIST */}
       <div className="space-y-3">
-        {items.map((item, i) => (
-          <div
-            key={i}
-            className="flex flex-col gap-2 rounded border p-3 sm:flex-row sm:items-end"
-          >
-            {/* ITEM CODE (READ ONLY FIXED) */}
-            <Input
-              value={item.item_code}
-              className="w-full sm:w-[200px]"
-              disabled
-            />
+        {items.map((item, i) => {
+          const itemInfo = itemCodes.find(
+            (x) => x.item_code === item.item_code,
+          );
 
-            {/* WEIGHT */}
-            <Input
-              value={String(item.weight)}
-              className="w-full sm:w-[120px]"
-            />
-
-            {/* REMOVE BUTTON */}
-            <Button
-              type="button"
-              className="w-full sm:w-auto"
-              onPress={() => removeItem(i)}
+          return (
+            <div
+              key={i}
+              className="flex flex-col md:flex-row gap-2 rounded border p-3"
             >
-              Remove
-            </Button>
-          </div>
-        ))}
+              {/* ITEM CODE */}
+              <div>
+                <Label className="block mb-2">Item Code</Label>
+                <Input
+                  value={item.item_code}
+                  className="w-full sm:w-[200px]"
+                  disabled
+                />
+              </div>
+
+              {/* DESCRIPTION */}
+              <div>
+                <Label className="block mb-2">Item Description</Label>
+                <Input value={itemInfo?.item_description || ""} disabled />
+              </div>
+
+              {/* WEIGHT + REMOVE */}
+              <div>
+                <Label className="block mb-2">Weight (kg/s)</Label>
+                <Input
+                  value={String(item.weight)}
+                  className="w-full sm:w-[120px]"
+                />
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                <Button
+                  type="button"
+                  className="w-full sm:w-auto"
+                  onPress={() => removeItem(i)}
+                >
+                  Remove
+                </Button>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* SUBMIT */}
@@ -315,7 +357,7 @@ export default function BHCookingForm() {
         {({ isPending }) => (
           <>
             {isPending ? <Spinner color="current" size="sm" /> : null}
-            Submit Cooking For
+            Submit Cooking Form
           </>
         )}
       </Button>

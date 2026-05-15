@@ -10,29 +10,31 @@ import {
   Select,
   Spinner,
   toast,
+  useFilter,
+  Description,
 } from "@heroui/react";
 
 import type { Key } from "@heroui/react";
-
 import { supabase } from "../../utils/supabase";
 
-type FlavoringItem = {
+type CookingItem = {
   item_code: string;
   weight: number;
+  // item_description: string;
 };
 
 type ItemCode = {
   id: number;
   item_code: string;
+  item_description: string;
+  uom: string;
 };
 
 export default function SFFlavoringForm() {
   const [loading, setLoading] = useState(true);
-
   const [submitting, setSubmitting] = useState(false);
 
   const [itemCodes, setItemCodes] = useState<ItemCode[]>([]);
-
   const [prodDate, setProdDate] = useState("");
 
   const [shift, setShift] = useState<string | null>(null);
@@ -40,38 +42,29 @@ export default function SFFlavoringForm() {
   const [opType, setOpType] = useState<string | null>(null);
 
   const [selectedKey, setSelectedKey] = useState<Key | null>(null);
-
   const [weight, setWeight] = useState("");
 
-  const [items, setItems] = useState<FlavoringItem[]>([]);
+  const [items, setItems] = useState<CookingItem[]>([]);
+
+  const { contains } = useFilter({ sensitivity: "base" });
 
   // ======================
-  // DATE HELPERS
+  // FETCH
   // ======================
 
   const today = useMemo(() => formatDate(new Date()), []);
-
   const yesterday = useMemo(() => {
     const d = new Date();
-
     d.setDate(d.getDate() - 1);
-
     return formatDate(d);
   }, []);
 
   function formatDate(d: Date) {
     const yyyy = d.getFullYear();
-
     const mm = String(d.getMonth() + 1).padStart(2, "0");
-
     const dd = String(d.getDate()).padStart(2, "0");
-
     return `${yyyy}-${mm}-${dd}`;
   }
-
-  // ======================
-  // FETCH
-  // ======================
 
   useEffect(() => {
     const fetchData = async () => {
@@ -80,14 +73,12 @@ export default function SFFlavoringForm() {
       const [codesRes] = await Promise.all([
         supabase
           .from("sf_sku")
-          .select("id, item_code")
+          .select("id, item_code, item_description, uom")
           .eq("type", "flavoring")
           .order("item_code"),
       ]);
 
-      if (codesRes.data) {
-        setItemCodes(codesRes.data);
-      }
+      if (codesRes.data) setItemCodes(codesRes.data);
 
       setLoading(false);
     };
@@ -95,14 +86,10 @@ export default function SFFlavoringForm() {
     fetchData();
   }, [today, yesterday]);
 
-  // ======================
-  // ITEM OPTIONS
-  // ======================
-
   const itemsList = itemCodes.map((i) => ({
     id: i.item_code,
-
     name: i.item_code,
+    description: i.item_description,
   }));
 
   // ======================
@@ -110,35 +97,26 @@ export default function SFFlavoringForm() {
   // ======================
 
   const addItem = () => {
-    if (!selectedKey || !weight) {
-      return;
-    }
+    if (!selectedKey || !weight) return;
 
     const code = String(selectedKey);
 
-    // prevent duplicates
-
-    if (items.some((i) => i.item_code === code)) {
-      return;
-    }
+    if (items.some((i) => i.item_code === code)) return;
 
     setItems((prev) => [
       ...prev,
-
       {
         item_code: code,
-
         weight: Number(weight),
       },
     ]);
 
     setSelectedKey(null);
-
     setWeight("");
   };
 
   // ======================
-  // REMOVE ITEM
+  // REMOVE ITEM (NEW)
   // ======================
 
   const removeItem = (index: number) => {
@@ -149,25 +127,20 @@ export default function SFFlavoringForm() {
   // SUBMIT
   // ======================
 
-  async function submitFlavoringForm(e: React.FormEvent<HTMLFormElement>) {
+  async function submitCookingForm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     if (items.length === 0) {
       toast.info("Add items first");
-
       return;
     }
 
     setSubmitting(true);
 
     try {
-      // child rows referencing sf_overview
-
       const payload = items.map((item) => ({
         item_code: item.item_code,
-
         weight: item.weight,
-
         prod_id: `PROD-${prodDate}-${shift}`,
       }));
 
@@ -175,18 +148,13 @@ export default function SFFlavoringForm() {
 
       if (error) {
         toast.danger(error.message);
-
         return;
       }
 
-      toast.success("Flavoring form submitted!");
-
-      // reset
+      toast.success("Cooking form submitted!");
 
       setItems([]);
-
       setSelectedKey(null);
-
       setWeight("");
     } finally {
       setSubmitting(false);
@@ -198,7 +166,7 @@ export default function SFFlavoringForm() {
   }
 
   return (
-    <form className="space-y-6" onSubmit={submitFlavoringForm}>
+    <form className="space-y-6" onSubmit={submitCookingForm}>
       {/* HEADER */}
       {/* ====================== */}
       {/* PRODUCTION DETAILS */}
@@ -215,6 +183,7 @@ export default function SFFlavoringForm() {
           type="date"
           value={prodDate}
           onChange={(e) => setProdDate(e.target.value)}
+          required
         />
       </div>
 
@@ -229,6 +198,7 @@ export default function SFFlavoringForm() {
           onSelectionChange={(key) => {
             setShift(String(key));
           }}
+          isRequired={true}
         >
           <Select.Trigger>
             <Select.Value />
@@ -238,7 +208,6 @@ export default function SFFlavoringForm() {
           <Select.Popover>
             <ListBox>
               <ListBox.Item id="day">Day Shift</ListBox.Item>
-              <ListBox.Item id="regular">Regular Shift</ListBox.Item>
 
               <ListBox.Item id="night">Night Shift</ListBox.Item>
             </ListBox>
@@ -257,6 +226,7 @@ export default function SFFlavoringForm() {
           onSelectionChange={(key) => {
             setOpType(String(key));
           }}
+          isRequired={true}
         >
           <Select.Trigger>
             <Select.Value />
@@ -275,11 +245,8 @@ export default function SFFlavoringForm() {
         </Select>
       </div>
 
-      {/* INPUT ROW */}
-
+      {/* INPUT ROW (RESPONSIVE FIXED) */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        {/* ITEM CODE */}
-
         <div className="w-full sm:w-[280px]">
           <Label>Item Code</Label>
 
@@ -289,31 +256,39 @@ export default function SFFlavoringForm() {
           >
             <Autocomplete.Trigger>
               <Autocomplete.Value />
-
+              <Autocomplete.ClearButton type="button" />
               <Autocomplete.Indicator />
             </Autocomplete.Trigger>
 
             <Autocomplete.Popover>
-              <SearchField>
-                <SearchField.Input placeholder="Search..." />
-              </SearchField>
+              <Autocomplete.Filter filter={contains}>
+                <SearchField>
+                  <SearchField.Group>
+                    <SearchField.Input placeholder="Search..." />
+                  </SearchField.Group>
+                </SearchField>
 
-              <ListBox>
-                {itemsList.map((item) => (
-                  <ListBox.Item key={item.id} id={item.id}>
-                    {item.name}
-                  </ListBox.Item>
-                ))}
-              </ListBox>
+                <ListBox items={itemsList} selectionMode="single">
+                  {(item) => (
+                    <ListBox.Item
+                      id={item.id}
+                      textValue={`${item.name}`}
+                      isDisabled={items.some((i) => i.item_code === item.id)}
+                    >
+                      <div className="flex flex-col">
+                        <Label>{item.name}</Label>
+                        <Description>{item.description}</Description>
+                      </div>
+                    </ListBox.Item>
+                  )}
+                </ListBox>
+              </Autocomplete.Filter>
             </Autocomplete.Popover>
           </Autocomplete>
         </div>
 
-        {/* WEIGHT */}
-
         <div className="w-full sm:w-[200px]">
           <Label>Weight</Label>
-
           <Input
             type="number"
             value={weight}
@@ -321,52 +296,60 @@ export default function SFFlavoringForm() {
           />
         </div>
 
-        {/* ADD BUTTON */}
-
         <Button type="button" onPress={addItem}>
           Add
         </Button>
       </div>
 
       {/* LIST */}
-
       <div className="space-y-3">
-        {items.map((item, i) => (
-          <div
-            key={i}
-            className="flex flex-col gap-2 rounded border p-3 sm:flex-row sm:items-end"
-          >
-            {/* ITEM CODE */}
+        {items.map((item, i) => {
+          const itemInfo = itemCodes.find(
+            (x) => x.item_code === item.item_code,
+          );
 
-            <Input
-              value={item.item_code}
-              className="w-full sm:w-[200px]"
-              disabled
-            />
-
-            {/* WEIGHT */}
-
-            <Input
-              value={String(item.weight)}
-              className="w-full sm:w-[120px]"
-              disabled
-            />
-
-            {/* REMOVE */}
-
-            <Button
-              type="button"
-              className="w-full sm:w-auto"
-              onPress={() => removeItem(i)}
+          return (
+            <div
+              key={i}
+              className="flex flex-col md:flex-row gap-2 rounded border p-3"
             >
-              Remove
-            </Button>
-          </div>
-        ))}
+              {/* ITEM CODE */}
+              <div>
+                <Label className="block mb-2">Item Code</Label>
+                <Input
+                  value={item.item_code}
+                  className="w-full sm:w-[200px]"
+                  disabled
+                />
+              </div>
+
+              {/* DESCRIPTION */}
+              <div>
+                <Label className="block mb-2">Item Description</Label>
+                <Input value={itemInfo?.item_description || ""} disabled />
+              </div>
+
+              {/* WEIGHT + REMOVE */}
+              <div>
+                <Label className="block mb-2">Weight</Label>
+                <Input value={String(item.weight)} />
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                <Button
+                  type="button"
+                  className="w-full sm:w-auto"
+                  onPress={() => removeItem(i)}
+                >
+                  Remove
+                </Button>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* SUBMIT */}
-
       <Button type="submit" isPending={submitting}>
         {({ isPending }) => (
           <>

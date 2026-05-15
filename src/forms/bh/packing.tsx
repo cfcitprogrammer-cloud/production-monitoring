@@ -10,19 +10,24 @@ import {
   Select,
   Spinner,
   toast,
+  useFilter,
+  Description,
 } from "@heroui/react";
 
 import type { Key } from "@heroui/react";
 import { supabase } from "../../utils/supabase";
 
-type PackingItem = {
+type CookingItem = {
   item_code: string;
-  quantity: number;
+  pcs: number;
+  // item_description: string;
 };
 
 type ItemCode = {
   id: number;
   item_code: string;
+  item_description: string;
+  uom: string;
 };
 
 export default function BHPackingForm() {
@@ -37,12 +42,14 @@ export default function BHPackingForm() {
   const [opType, setOpType] = useState<string | null>(null);
 
   const [selectedKey, setSelectedKey] = useState<Key | null>(null);
-  const [quantity, setQuantity] = useState("");
+  const [pcs, setPcs] = useState("");
 
-  const [items, setItems] = useState<PackingItem[]>([]);
+  const [items, setItems] = useState<CookingItem[]>([]);
+
+  const { contains } = useFilter({ sensitivity: "base" });
 
   // ======================
-  // DATES
+  // FETCH
   // ======================
 
   const today = useMemo(() => formatDate(new Date()), []);
@@ -59,10 +66,6 @@ export default function BHPackingForm() {
     return `${yyyy}-${mm}-${dd}`;
   }
 
-  // ======================
-  // FETCH DATA
-  // ======================
-
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -70,7 +73,7 @@ export default function BHPackingForm() {
       const [codesRes] = await Promise.all([
         supabase
           .from("bihon_sku")
-          .select("id, item_code")
+          .select("id, item_code, item_description, uom")
           .eq("type", "packing_bihon")
           .order("item_code"),
       ]);
@@ -86,6 +89,7 @@ export default function BHPackingForm() {
   const itemsList = itemCodes.map((i) => ({
     id: i.item_code,
     name: i.item_code,
+    description: i.item_description,
   }));
 
   // ======================
@@ -93,7 +97,7 @@ export default function BHPackingForm() {
   // ======================
 
   const addItem = () => {
-    if (!selectedKey || !quantity) return;
+    if (!selectedKey || !pcs) return;
 
     const code = String(selectedKey);
 
@@ -103,16 +107,16 @@ export default function BHPackingForm() {
       ...prev,
       {
         item_code: code,
-        quantity: Number(quantity),
+        pcs: Number(pcs),
       },
     ]);
 
     setSelectedKey(null);
-    setQuantity("");
+    setPcs("");
   };
 
   // ======================
-  // REMOVE ITEM
+  // REMOVE ITEM (NEW)
   // ======================
 
   const removeItem = (index: number) => {
@@ -123,7 +127,7 @@ export default function BHPackingForm() {
   // SUBMIT
   // ======================
 
-  async function submitPackingForm(e: React.FormEvent<HTMLFormElement>) {
+  async function submitCookingForm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     if (items.length === 0) {
@@ -136,7 +140,7 @@ export default function BHPackingForm() {
     try {
       const payload = items.map((item) => ({
         item_code: item.item_code,
-        qty: item.quantity,
+        qty: item.pcs,
         prod_id: `PROD-${prodDate}-${shift}`,
       }));
 
@@ -147,26 +151,22 @@ export default function BHPackingForm() {
         return;
       }
 
-      toast.success("Packing form submitted!");
+      toast.success("Cooking form submitted!");
 
       setItems([]);
       setSelectedKey(null);
-      setQuantity("");
+      setPcs("");
     } finally {
       setSubmitting(false);
     }
   }
-
-  // ======================
-  // LOADING
-  // ======================
 
   if (loading) {
     return <div className="py-10 text-center">Loading...</div>;
   }
 
   return (
-    <form className="space-y-6" onSubmit={submitPackingForm}>
+    <form className="space-y-6" onSubmit={submitCookingForm}>
       {/* HEADER */}
       {/* ====================== */}
       {/* PRODUCTION DETAILS */}
@@ -183,6 +183,7 @@ export default function BHPackingForm() {
           type="date"
           value={prodDate}
           onChange={(e) => setProdDate(e.target.value)}
+          required
         />
       </div>
 
@@ -197,6 +198,7 @@ export default function BHPackingForm() {
           onSelectionChange={(key) => {
             setShift(String(key));
           }}
+          isRequired={true}
         >
           <Select.Trigger>
             <Select.Value />
@@ -224,6 +226,7 @@ export default function BHPackingForm() {
           onSelectionChange={(key) => {
             setOpType(String(key));
           }}
+          isRequired={true}
         >
           <Select.Trigger>
             <Select.Value />
@@ -242,7 +245,7 @@ export default function BHPackingForm() {
         </Select>
       </div>
 
-      {/* INPUT ROW */}
+      {/* INPUT ROW (RESPONSIVE FIXED) */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="w-full sm:w-[280px]">
           <Label>Item Code</Label>
@@ -253,31 +256,43 @@ export default function BHPackingForm() {
           >
             <Autocomplete.Trigger>
               <Autocomplete.Value />
+              <Autocomplete.ClearButton type="button" />
               <Autocomplete.Indicator />
             </Autocomplete.Trigger>
 
             <Autocomplete.Popover>
-              <SearchField>
-                <SearchField.Input placeholder="Search..." />
-              </SearchField>
+              <Autocomplete.Filter filter={contains}>
+                <SearchField>
+                  <SearchField.Group>
+                    <SearchField.Input placeholder="Search..." />
+                  </SearchField.Group>
+                </SearchField>
 
-              <ListBox>
-                {itemsList.map((item) => (
-                  <ListBox.Item key={item.id} id={item.id}>
-                    {item.name}
-                  </ListBox.Item>
-                ))}
-              </ListBox>
+                <ListBox items={itemsList} selectionMode="single">
+                  {(item) => (
+                    <ListBox.Item
+                      id={item.id}
+                      textValue={`${item.name}`}
+                      isDisabled={items.some((i) => i.item_code === item.id)}
+                    >
+                      <div className="flex flex-col">
+                        <Label>{item.name}</Label>
+                        <Description>{item.description}</Description>
+                      </div>
+                    </ListBox.Item>
+                  )}
+                </ListBox>
+              </Autocomplete.Filter>
             </Autocomplete.Popover>
           </Autocomplete>
         </div>
 
         <div className="w-full sm:w-[200px]">
-          <Label>Quantity</Label>
+          <Label>PC/s</Label>
           <Input
             type="number"
-            value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
+            value={pcs}
+            onChange={(e) => setPcs(e.target.value)}
           />
         </div>
 
@@ -288,27 +303,50 @@ export default function BHPackingForm() {
 
       {/* LIST */}
       <div className="space-y-3">
-        {items.map((item, i) => (
-          <div
-            key={i}
-            className="flex flex-col gap-2 rounded border p-3 sm:flex-row sm:items-end"
-          >
-            <Input value={item.item_code} className="w-full sm:w-[200px]" />
+        {items.map((item, i) => {
+          const itemInfo = itemCodes.find(
+            (x) => x.item_code === item.item_code,
+          );
 
-            <Input
-              value={String(item.quantity)}
-              className="w-full sm:w-[120px]"
-            />
-
-            <Button
-              type="button"
-              className="w-full sm:w-auto"
-              onPress={() => removeItem(i)}
+          return (
+            <div
+              key={i}
+              className="flex flex-col md:flex-row gap-2 rounded border p-3"
             >
-              Remove
-            </Button>
-          </div>
-        ))}
+              {/* ITEM CODE */}
+              <div>
+                <Label className="block mb-2">Item Code</Label>
+                <Input
+                  value={item.item_code}
+                  className="w-full sm:w-[200px]"
+                  disabled
+                />
+              </div>
+
+              {/* DESCRIPTION */}
+              <div>
+                <Label className="block mb-2">Item Description</Label>
+                <Input value={itemInfo?.item_description || ""} disabled />
+              </div>
+
+              {/* PCS + REMOVE */}
+              <div>
+                <Label className="block mb-2">PC/s</Label>
+                <Input value={String(item.pcs)} />
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                <Button
+                  type="button"
+                  className="w-full sm:w-auto"
+                  onPress={() => removeItem(i)}
+                >
+                  Remove
+                </Button>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* SUBMIT */}

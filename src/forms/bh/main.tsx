@@ -221,8 +221,6 @@ export default function BHMainForm() {
             <ListBox>
               <ListBox.Item id="day">Day Shift</ListBox.Item>
 
-              <ListBox.Item id="regular">Regular Shift</ListBox.Item>
-
               <ListBox.Item id="night">Night Shift</ListBox.Item>
             </ListBox>
           </Select.Popover>
