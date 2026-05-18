@@ -231,6 +231,8 @@ export default function ProductionQtyUnitForm({
           type="date"
           value={prodDate}
           onChange={(e) => setProdDate(e.target.value)}
+          // min={new Date(Date.now() - 86400000).toLocaleDateString("sv-SE")}
+          // max={new Date().toLocaleDateString("sv-SE")}
           required
         />
       </div>

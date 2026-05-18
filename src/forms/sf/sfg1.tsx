@@ -151,7 +151,7 @@ export default function SFBlendingForm() {
         return;
       }
 
-      toast.success("Cooking form submitted!");
+      toast.success("Form submitted!");
 
       setItems([]);
       setSelectedKey(null);
@@ -183,6 +183,8 @@ export default function SFBlendingForm() {
           type="date"
           value={prodDate}
           onChange={(e) => setProdDate(e.target.value)}
+          min={new Date(Date.now() - 86400000).toLocaleDateString("sv-SE")}
+          max={new Date().toLocaleDateString("sv-SE")}
           required
         />
       </div>
