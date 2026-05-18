@@ -160,7 +160,7 @@ export default function SFFGForm() {
         return;
       }
 
-      toast.success("FG form submitted!");
+      toast.success("Form submitted!");
 
       setItems([]);
       setSelectedKey(null);

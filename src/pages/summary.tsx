@@ -21,6 +21,7 @@ type ModuleConfig = {
   label: string;
   table: string;
   valueKey: string;
+  displayValueLabel?: string;
   hasUnit: boolean;
 };
 
@@ -72,7 +73,13 @@ const MODULES: Record<string, ModuleConfig[]> = {
       valueKey: "pcs",
       hasUnit: false,
     },
-    { key: "fg", label: "FG", table: "sf_fg", valueKey: "qty", hasUnit: false },
+    {
+      key: "fg",
+      label: "FG",
+      table: "sf_fg",
+      valueKey: "qty",
+      hasUnit: false,
+    },
   ],
   bihon: [
     {
@@ -89,7 +96,14 @@ const MODULES: Record<string, ModuleConfig[]> = {
       valueKey: "qty",
       hasUnit: false,
     },
-    { key: "fg", label: "FG", table: "bh_fg", valueKey: "qty", hasUnit: false },
+    {
+      key: "fg",
+      label: "FG",
+      table: "bh_fg",
+      valueKey: "qty",
+      displayValueLabel: "Cases/Bundles",
+      hasUnit: false,
+    },
   ],
 };
 
@@ -312,7 +326,7 @@ export default function ProductionSummary() {
                         ITEM
                       </th>
                       <th className="p-2 border-x font-bold text-[10px] uppercase">
-                        {m.valueKey}
+                        {m.displayValueLabel || m.valueKey}
                       </th>
                       {shouldShowUnit(m) && (
                         <th className="p-2 border-x font-bold text-[10px]">

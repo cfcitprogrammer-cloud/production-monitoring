@@ -151,7 +151,7 @@ export default function SFFryingForm() {
         return;
       }
 
-      toast.success("Cooking form submitted!");
+      toast.success("Form submitted!");
 
       setItems([]);
       setSelectedKey(null);

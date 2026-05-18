@@ -151,7 +151,7 @@ export default function SFPieceForm() {
         return;
       }
 
-      toast.success("Cooking form submitted!");
+      toast.success("Form submitted!");
 
       setItems([]);
       setSelectedKey(null);
