@@ -129,6 +129,30 @@ const MODULES: Record<string, ModuleConfig[]> = {
       hasUnit: false,
     },
   ],
+  sotanghon: [
+    {
+      key: "seasoning",
+      label: "Seasoning",
+      table: "kf_seasoning",
+      valueKey: "qty",
+      hasUnit: true,
+    },
+    {
+      key: "packing",
+      label: "Packing",
+      table: "kf_packing",
+      valueKey: "qty",
+      hasUnit: false,
+    },
+    {
+      key: "fg",
+      label: "FG",
+      table: "kf_fg",
+      valueKey: "qty",
+      displayValueLabel: "Cases/Bundles",
+      hasUnit: false,
+    },
+  ],
 };
 
 export default function ProductionSummary() {
@@ -137,7 +161,7 @@ export default function ProductionSummary() {
     () => new Date().toISOString().split("T")[0],
   );
   const [productType, setProductType] = useState<
-    "bihon" | "snackfood" | "catmon"
+    "bihon" | "snackfood" | "catmon" | "sotanghon"
   >("bihon");
   const [selectedShift, setSelectedShift] = useState<string>("");
   const [dataMap, setDataMap] = useState<Record<string, Row[]>>({});
@@ -296,7 +320,8 @@ export default function ProductionSummary() {
             >
               <option value="bihon">Bihon</option>
               <option value="snackfood">Snackfood</option>
-              <option value="catmon">Catmon</option>
+              <option value="catmon">Canton</option>
+              <option value="sotanghon">Sotanghon</option>
             </select>
           </div>
 

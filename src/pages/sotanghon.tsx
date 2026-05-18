@@ -1,17 +1,17 @@
 import { Tabs } from "@heroui/react";
 import Page from "../ui/_page";
-import CatmonPackingForm from "../forms/catmon/packing";
-import CatmonMixingForm from "../forms/catmon/mixing";
-import CatmonFGForm from "../forms/catmon/fg";
+import SotanghonSeasoningForm from "../forms/sotanghon/seasoning";
+import SotanghonPackingForm from "../forms/sotanghon/packing";
+import SotanghonFGForm from "../forms/sotanghon/fg";
 
-export default function CatmonPage() {
+export default function SotanghonPage() {
   return (
     <Page>
       <Tabs orientation="vertical">
         <Tabs.ListContainer>
           <Tabs.List aria-label="Options">
-            <Tabs.Tab id="mixing">
-              Mixing
+            <Tabs.Tab id="seasoning">
+              Seasoning
               <Tabs.Indicator />
             </Tabs.Tab>
             <Tabs.Tab id="packing">
@@ -24,14 +24,14 @@ export default function CatmonPage() {
             </Tabs.Tab>
           </Tabs.List>
         </Tabs.ListContainer>
-        <Tabs.Panel className="pt-4" id="mixing">
-          <CatmonMixingForm />
+        <Tabs.Panel className="pt-4" id="seasoning">
+          <SotanghonSeasoningForm />
         </Tabs.Panel>
         <Tabs.Panel className="pt-4" id="packing">
-          <CatmonPackingForm />
+          <SotanghonPackingForm />
         </Tabs.Panel>
         <Tabs.Panel className="pt-4" id="fg">
-          <CatmonFGForm />
+          <SotanghonFGForm />
         </Tabs.Panel>
       </Tabs>
     </Page>

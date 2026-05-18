@@ -7,6 +7,7 @@ import {
   Cup,
   GraphNode,
   Star,
+  Box,
 } from "@gravity-ui/icons";
 import { Button, Drawer } from "@heroui/react";
 
@@ -20,9 +21,9 @@ export default function Sidebar() {
   }[] = [
     { icon: ChartColumn, label: "Dashboard", url: "/" },
     { icon: Flame, label: "Bihon", url: "/bihon" },
-    { icon: Flame, label: "Canton", url: "/canton" },
     { icon: Cup, label: "Snackfood", url: "/snackfood" },
-    { icon: Star, label: "Catmon", url: "/catmon" },
+    { icon: Star, label: "Canton", url: "/canton" },
+    { icon: Box, label: "Sotanghon", url: "/sotanghon" },
     { icon: GraphNode, label: "Summary", url: "/summary" },
   ];
 
