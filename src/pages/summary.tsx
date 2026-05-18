@@ -105,6 +105,30 @@ const MODULES: Record<string, ModuleConfig[]> = {
       hasUnit: false,
     },
   ],
+  catmon: [
+    {
+      key: "mixing",
+      label: "Mixing",
+      table: "catmon_mixing",
+      valueKey: "weight",
+      hasUnit: false,
+    },
+    {
+      key: "packing",
+      label: "Packing",
+      table: "catmon_packing",
+      valueKey: "qty",
+      hasUnit: false,
+    },
+    {
+      key: "fg",
+      label: "FG",
+      table: "catmon_fg",
+      valueKey: "qty",
+      displayValueLabel: "Cases/Bundles",
+      hasUnit: false,
+    },
+  ],
 };
 
 export default function ProductionSummary() {
@@ -112,9 +136,9 @@ export default function ProductionSummary() {
   const [selectedDate, setSelectedDate] = useState(
     () => new Date().toISOString().split("T")[0],
   );
-  const [productType, setProductType] = useState<"bihon" | "snackfood">(
-    "bihon",
-  );
+  const [productType, setProductType] = useState<
+    "bihon" | "snackfood" | "catmon"
+  >("bihon");
   const [selectedShift, setSelectedShift] = useState<string>("");
   const [dataMap, setDataMap] = useState<Record<string, Row[]>>({});
 
@@ -272,6 +296,7 @@ export default function ProductionSummary() {
             >
               <option value="bihon">Bihon</option>
               <option value="snackfood">Snackfood</option>
+              <option value="catmon">Catmon</option>
             </select>
           </div>
 

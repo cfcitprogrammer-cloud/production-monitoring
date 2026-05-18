@@ -1,6 +1,13 @@
 import type { ComponentType, SVGProps } from "react";
 
-import { Bars, ChartColumn, Flame, Cup, GraphNode } from "@gravity-ui/icons";
+import {
+  Bars,
+  ChartColumn,
+  Flame,
+  Cup,
+  GraphNode,
+  Star,
+} from "@gravity-ui/icons";
 import { Button, Drawer } from "@heroui/react";
 
 import { Link } from "react-router-dom";
@@ -15,6 +22,7 @@ export default function Sidebar() {
     { icon: Flame, label: "Bihon", url: "/bihon" },
     { icon: Flame, label: "Canton", url: "/canton" },
     { icon: Cup, label: "Snackfood", url: "/snackfood" },
+    { icon: Star, label: "Catmon", url: "/catmon" },
     { icon: GraphNode, label: "Summary", url: "/summary" },
   ];
 

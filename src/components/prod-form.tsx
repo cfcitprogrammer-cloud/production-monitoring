@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   Autocomplete,
@@ -15,13 +15,8 @@ import {
 } from "@heroui/react";
 
 import type { Key } from "@heroui/react";
-import { supabase } from "../../utils/supabase";
 
-type CookingItem = {
-  item_code: string;
-  pcs: number;
-  // item_description: string;
-};
+import { supabase } from "../utils/supabase";
 
 type ItemCode = {
   id: number;
@@ -30,11 +25,48 @@ type ItemCode = {
   uom: string;
 };
 
-export default function BHPackingForm() {
+type LineItem = {
+  item_code: string;
+  value: number;
+};
+
+type Props = {
+  title: string;
+
+  skuTable: string;
+
+  submitTable: string;
+
+  skuFilterColumn?: string;
+
+  skuFilterValue?: string;
+
+  valueField?: string;
+
+  valueLabel?: string;
+};
+
+export default function ProductionForm({
+  title,
+
+  skuTable,
+
+  submitTable,
+
+  skuFilterColumn = "type",
+
+  skuFilterValue,
+
+  valueField = "usage",
+
+  valueLabel = "Usage",
+}: Props) {
   const [loading, setLoading] = useState(true);
+
   const [submitting, setSubmitting] = useState(false);
 
   const [itemCodes, setItemCodes] = useState<ItemCode[]>([]);
+
   const [prodDate, setProdDate] = useState("");
 
   const [shift, setShift] = useState<string | null>(null);
@@ -42,53 +74,53 @@ export default function BHPackingForm() {
   const [opType, setOpType] = useState<string | null>(null);
 
   const [selectedKey, setSelectedKey] = useState<Key | null>(null);
-  const [pcs, setPcs] = useState("");
 
-  const [items, setItems] = useState<CookingItem[]>([]);
+  const [value, setValue] = useState("");
 
-  const { contains } = useFilter({ sensitivity: "base" });
+  const [items, setItems] = useState<LineItem[]>([]);
+
+  const { contains } = useFilter({
+    sensitivity: "base",
+  });
 
   // ======================
   // FETCH
   // ======================
 
-  const today = useMemo(() => formatDate(new Date()), []);
-  const yesterday = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return formatDate(d);
-  }, []);
-
-  function formatDate(d: Date) {
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  }
-
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
 
-      const [codesRes] = await Promise.all([
-        supabase
-          .from("bihon_sku")
-          .select("id, item_code, item_description, uom")
-          .eq("type", "packing_bihon")
-          .order("item_code"),
-      ]);
+      let query = supabase
+        .from(skuTable)
+        .select("id, item_code, item_description, uom")
+        .order("item_code");
 
-      if (codesRes.data) setItemCodes(codesRes.data);
+      if (skuFilterValue) {
+        query = query.eq(skuFilterColumn, skuFilterValue);
+      }
+
+      const { data } = await query;
+
+      if (data) {
+        setItemCodes(data);
+      }
 
       setLoading(false);
     };
 
     fetchData();
-  }, [today, yesterday]);
+  }, [skuTable, skuFilterColumn, skuFilterValue]);
+
+  // ======================
+  // OPTIONS
+  // ======================
 
   const itemsList = itemCodes.map((i) => ({
     id: i.item_code,
+
     name: i.item_code,
+
     description: i.item_description,
   }));
 
@@ -97,26 +129,30 @@ export default function BHPackingForm() {
   // ======================
 
   const addItem = () => {
-    if (!selectedKey || !pcs) return;
+    if (!selectedKey || !value) return;
 
     const code = String(selectedKey);
 
-    if (items.some((i) => i.item_code === code)) return;
+    if (items.some((i) => i.item_code === code)) {
+      return;
+    }
 
     setItems((prev) => [
       ...prev,
       {
         item_code: code,
-        pcs: Number(pcs),
+
+        value: Number(value),
       },
     ]);
 
     setSelectedKey(null);
-    setPcs("");
+
+    setValue("");
   };
 
   // ======================
-  // REMOVE ITEM (NEW)
+  // REMOVE
   // ======================
 
   const removeItem = (index: number) => {
@@ -127,7 +163,7 @@ export default function BHPackingForm() {
   // SUBMIT
   // ======================
 
-  async function submitCookingForm(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     if (items.length === 0) {
@@ -140,11 +176,13 @@ export default function BHPackingForm() {
     try {
       const payload = items.map((item) => ({
         item_code: item.item_code,
-        qty: item.pcs,
+
+        [valueField]: item.value,
+
         prod_id: `PROD-${prodDate}-${shift}`,
       }));
 
-      const { error } = await supabase.from("bh_packing").insert(payload);
+      const { error } = await supabase.from(submitTable).insert(payload);
 
       if (error) {
         toast.danger(error.message);
@@ -154,25 +192,26 @@ export default function BHPackingForm() {
       toast.success("Form submitted!");
 
       setItems([]);
+
       setSelectedKey(null);
-      setPcs("");
+
+      setValue("");
     } finally {
       setSubmitting(false);
     }
   }
+
+  // ======================
+  // LOADING
+  // ======================
 
   if (loading) {
     return <div className="py-10 text-center">Loading...</div>;
   }
 
   return (
-    <form className="space-y-6" onSubmit={submitCookingForm}>
-      {/* HEADER */}
-      {/* ====================== */}
-      {/* PRODUCTION DETAILS */}
-      {/* ====================== */}
-
-      <h2 className="text-xl font-semibold">Production Details</h2>
+    <form className="space-y-6" onSubmit={handleSubmit}>
+      <h2 className="text-xl font-semibold">{title}</h2>
 
       {/* DATE */}
 
@@ -195,10 +234,8 @@ export default function BHPackingForm() {
         <Select
           className="w-[256px]"
           selectedKey={shift}
-          onSelectionChange={(key) => {
-            setShift(String(key));
-          }}
-          isRequired={true}
+          onSelectionChange={(key) => setShift(String(key))}
+          isRequired
         >
           <Select.Trigger>
             <Select.Value />
@@ -223,10 +260,8 @@ export default function BHPackingForm() {
         <Select
           className="w-[256px]"
           selectedKey={opType}
-          onSelectionChange={(key) => {
-            setOpType(String(key));
-          }}
-          isRequired={true}
+          onSelectionChange={(key) => setOpType(String(key))}
+          isRequired
         >
           <Select.Trigger>
             <Select.Value />
@@ -245,7 +280,8 @@ export default function BHPackingForm() {
         </Select>
       </div>
 
-      {/* INPUT ROW (RESPONSIVE FIXED) */}
+      {/* INPUT ROW */}
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="w-full sm:w-[280px]">
           <Label>Item Code</Label>
@@ -256,7 +292,9 @@ export default function BHPackingForm() {
           >
             <Autocomplete.Trigger>
               <Autocomplete.Value />
+
               <Autocomplete.ClearButton type="button" />
+
               <Autocomplete.Indicator />
             </Autocomplete.Trigger>
 
@@ -270,13 +308,10 @@ export default function BHPackingForm() {
 
                 <ListBox items={itemsList} selectionMode="single">
                   {(item) => (
-                    <ListBox.Item
-                      id={item.id}
-                      textValue={`${item.name}`}
-                      isDisabled={items.some((i) => i.item_code === item.id)}
-                    >
+                    <ListBox.Item id={item.id} textValue={item.name}>
                       <div className="flex flex-col">
                         <Label>{item.name}</Label>
+
                         <Description>{item.description}</Description>
                       </div>
                     </ListBox.Item>
@@ -288,11 +323,12 @@ export default function BHPackingForm() {
         </div>
 
         <div className="w-full sm:w-[200px]">
-          <Label>PC/s</Label>
+          <Label>{valueLabel}</Label>
+
           <Input
             type="number"
-            value={pcs}
-            onChange={(e) => setPcs(e.target.value)}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
           />
         </div>
 
@@ -302,6 +338,7 @@ export default function BHPackingForm() {
       </div>
 
       {/* LIST */}
+
       <div className="space-y-3">
         {items.map((item, i) => {
           const itemInfo = itemCodes.find(
@@ -313,48 +350,25 @@ export default function BHPackingForm() {
               key={i}
               className="flex flex-col md:flex-row gap-2 rounded border p-3"
             >
-              {/* ITEM CODE */}
-              <div>
-                <Label className="block mb-2">Item Code</Label>
-                <Input
-                  value={item.item_code}
-                  className="w-full sm:w-[200px]"
-                  disabled
-                />
-              </div>
+              <Input value={item.item_code} disabled />
 
-              {/* DESCRIPTION */}
-              <div>
-                <Label className="block mb-2">Item Description</Label>
-                <Input value={itemInfo?.item_description || ""} disabled />
-              </div>
+              <Input value={itemInfo?.item_description || ""} disabled />
 
-              {/* PCS + REMOVE */}
-              <div>
-                <Label className="block mb-2">PC/s</Label>
-                <Input value={String(item.pcs)} />
-              </div>
+              <Input value={String(item.value)} disabled />
 
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-                <Button
-                  type="button"
-                  className="w-full sm:w-auto"
-                  onPress={() => removeItem(i)}
-                >
-                  Remove
-                </Button>
-              </div>
+              <Button type="button" onPress={() => removeItem(i)}>
+                Remove
+              </Button>
             </div>
           );
         })}
       </div>
 
-      {/* SUBMIT */}
       <Button type="submit" isPending={submitting}>
         {({ isPending }) => (
           <>
             {isPending ? <Spinner color="current" size="sm" /> : null}
-            Submit Packing Form
+            Submit
           </>
         )}
       </Button>
