@@ -299,8 +299,8 @@ export default function SFFGForm() {
           </Autocomplete>
         </div>
 
-        <div className="w-[160px]">
-          <Label>Quantity</Label>
+        <div className="">
+          <Label className="block">Quantity</Label>
           <Input
             type="number"
             value={quantity}
@@ -308,8 +308,8 @@ export default function SFFGForm() {
           />
         </div>
 
-        <div className="w-[160px]">
-          <Label>Unit</Label>
+        <div className="">
+          <Label className="block">Unit</Label>
 
           <Select
             selectedKey={unit}

@@ -267,7 +267,7 @@ export default function ProductionQtyUnitForm({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         {/* ITEM */}
 
-        <div className="w-full sm:w-[280px]">
+        <div className="sm:w-[280px]">
           <Label>Item Code</Label>
 
           <Autocomplete
@@ -308,8 +308,8 @@ export default function ProductionQtyUnitForm({
 
         {/* QTY */}
 
-        <div className="w-full sm:w-[140px]">
-          <Label>Qty</Label>
+        <div className="">
+          <Label className="block">Qty</Label>
 
           <Input
             type="number"
@@ -320,8 +320,8 @@ export default function ProductionQtyUnitForm({
 
         {/* UNIT */}
 
-        <div className="w-full sm:w-[140px]">
-          <Label>Unit</Label>
+        <div className="">
+          <Label className="block">Unit</Label>
 
           <Select
             selectedKey={unit}
