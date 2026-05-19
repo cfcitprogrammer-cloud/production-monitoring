@@ -46,6 +46,8 @@ export default function SFBlendingForm() {
 
   const [items, setItems] = useState<CookingItem[]>([]);
 
+  const [site, setSite] = useState<string | null>(null);
+
   const { contains } = useFilter({ sensitivity: "base" });
 
   // ======================
@@ -142,6 +144,7 @@ export default function SFBlendingForm() {
         item_code: item.item_code,
         usage: item.usage,
         prod_id: `PROD-${prodDate}-${shift}`,
+        is_new_building: site === "sf2",
       }));
 
       const { error } = await supabase.from("sf_blending").insert(payload);
@@ -156,6 +159,7 @@ export default function SFBlendingForm() {
       setItems([]);
       setSelectedKey(null);
       setUsage("");
+      setSite(null);
     } finally {
       setSubmitting(false);
     }
@@ -173,6 +177,34 @@ export default function SFBlendingForm() {
       {/* ====================== */}
 
       <h2 className="text-xl font-semibold">Production Details</h2>
+
+      {/* SITE */}
+
+      <div>
+        <Label className="block mb-2">Site</Label>
+
+        <Select
+          className="w-[256px]"
+          selectedKey={site}
+          onSelectionChange={(key) => {
+            setSite(String(key));
+          }}
+          isRequired
+        >
+          <Select.Trigger>
+            <Select.Value />
+            <Select.Indicator />
+          </Select.Trigger>
+
+          <Select.Popover>
+            <ListBox>
+              <ListBox.Item id="sf1">SF1</ListBox.Item>
+
+              <ListBox.Item id="sf2">SF2</ListBox.Item>
+            </ListBox>
+          </Select.Popover>
+        </Select>
+      </div>
 
       {/* DATE */}
 

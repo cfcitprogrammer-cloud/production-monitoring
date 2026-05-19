@@ -46,6 +46,8 @@ export default function SFFryingForm() {
 
   const [items, setItems] = useState<CookingItem[]>([]);
 
+  const [site, setSite] = useState<string | null>(null);
+
   const { contains } = useFilter({ sensitivity: "base" });
 
   // ======================
@@ -142,6 +144,7 @@ export default function SFFryingForm() {
         item_code: item.item_code,
         weight: item.weight,
         prod_id: `PROD-${prodDate}-${shift}`,
+        is_new_building: site === "sf2",
       }));
 
       const { error } = await supabase.from("sf_frying").insert(payload);
@@ -156,6 +159,7 @@ export default function SFFryingForm() {
       setItems([]);
       setSelectedKey(null);
       setWeight("");
+      setSite(null);
     } finally {
       setSubmitting(false);
     }
@@ -175,6 +179,34 @@ export default function SFFryingForm() {
       <h2 className="text-xl font-semibold">Production Details</h2>
 
       {/* DATE */}
+
+      {/* SITE */}
+
+      <div>
+        <Label className="block mb-2">Site</Label>
+
+        <Select
+          className="w-[256px]"
+          selectedKey={site}
+          onSelectionChange={(key) => {
+            setSite(String(key));
+          }}
+          isRequired
+        >
+          <Select.Trigger>
+            <Select.Value />
+            <Select.Indicator />
+          </Select.Trigger>
+
+          <Select.Popover>
+            <ListBox>
+              <ListBox.Item id="sf1">SF1</ListBox.Item>
+
+              <ListBox.Item id="sf2">SF2</ListBox.Item>
+            </ListBox>
+          </Select.Popover>
+        </Select>
+      </div>
 
       <div>
         <Label className="block mb-2">Production Date</Label>

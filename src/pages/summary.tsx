@@ -161,12 +161,22 @@ export default function ProductionSummary() {
     () => new Date().toISOString().split("T")[0],
   );
   const [productType, setProductType] = useState<
-    "bihon" | "snackfood" | "catmon" | "sotanghon"
+    "bihon" | "snackfood-old" | "snackfood-new" | "catmon" | "sotanghon"
   >("bihon");
   const [selectedShift, setSelectedShift] = useState<string>("");
   const [dataMap, setDataMap] = useState<Record<string, Row[]>>({});
 
-  const modules = MODULES[productType];
+  const modules =
+    productType === "snackfood-old" || productType === "snackfood-new"
+      ? MODULES.snackfood
+      : MODULES[productType];
+
+  // const isNewBuilding =
+  //   productType === "snackfood-new"
+  //     ? true
+  //     : productType === "snackfood-old"
+  //       ? false
+  //       : null;
 
   /* =========================
       HELPERS
@@ -205,20 +215,44 @@ export default function ProductionSummary() {
             let selectStr = `item_code, ${m.valueKey}`;
             if (m.hasUnit) selectStr += `, unit`;
 
-            let { data, error } = await supabase
+            let query = supabase
               .from(m.table)
-              .select(selectStr as any) // CAST TO ANY TO FIX TYPESCRIPT ERROR
+              .select(selectStr as any)
               .eq("prod_id", targetId);
+
+            if (productType === "snackfood-new") {
+              query = query.eq("is_new_building", true);
+            }
+
+            if (productType === "snackfood-old") {
+              query = query.or(
+                "is_new_building.is.null,is_new_building.eq.false",
+              );
+            }
+
+            let { data, error } = await query;
 
             // Fallback for missing columns
             if (error?.message.includes("unit")) {
               console.warn(
                 `⚠️ Table ${m.table} missing unit column. Retrying...`,
               );
-              const retry = await supabase
+              let retryQuery = supabase
                 .from(m.table)
                 .select(`item_code, ${m.valueKey}` as any)
                 .eq("prod_id", targetId);
+
+              if (productType === "snackfood-new") {
+                retryQuery = retryQuery.eq("is_new_building", true);
+              }
+
+              if (productType === "snackfood-old") {
+                retryQuery = retryQuery.or(
+                  "is_new_building.is.null,is_new_building.eq.false",
+                );
+              }
+
+              const retry = await retryQuery;
               data = retry.data;
               error = retry.error;
             }
@@ -319,7 +353,9 @@ export default function ProductionSummary() {
               className="border p-2 rounded bg-white h-[40px] min-w-[140px] text-sm outline-none"
             >
               <option value="bihon">Bihon</option>
-              <option value="snackfood">Snackfood</option>
+              <option value="snackfood-old">Snackfood (Old Building)</option>
+
+              <option value="snackfood-new">Snackfood (New Building)</option>
               <option value="catmon">Canton</option>
               <option value="sotanghon">Sotanghon</option>
             </select>

@@ -36,6 +36,8 @@ export default function SFMainForm() {
 
   const [selectedFryers, setSelectedFryers] = useState<string[]>(["Fryer 1"]);
 
+  const [site, setSite] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(false);
 
   // ======================
@@ -76,6 +78,8 @@ export default function SFMainForm() {
             additional_remarks: additionalRemarks,
 
             fryers_running: selectedFryers,
+
+            is_new_building: site === "sf2",
           },
         ])
         .select();
@@ -107,6 +111,8 @@ export default function SFMainForm() {
       setAdditionalRemarks("");
 
       setSelectedFryers(["Fryer 1"]);
+
+      setSite(null);
     } catch (error: any) {
       toast.danger(error.message);
     } finally {
@@ -131,6 +137,34 @@ export default function SFMainForm() {
       {/* ====================== */}
 
       <h2 className="text-xl font-semibold">Production Details</h2>
+
+      {/* SITE */}
+
+      <div>
+        <Label className="block mb-2">Site</Label>
+
+        <Select
+          className="w-[256px]"
+          selectedKey={site}
+          onSelectionChange={(key) => {
+            setSite(String(key));
+          }}
+          isRequired
+        >
+          <Select.Trigger>
+            <Select.Value />
+            <Select.Indicator />
+          </Select.Trigger>
+
+          <Select.Popover>
+            <ListBox>
+              <ListBox.Item id="sf1">SF1</ListBox.Item>
+
+              <ListBox.Item id="sf2">SF2</ListBox.Item>
+            </ListBox>
+          </Select.Popover>
+        </Select>
+      </div>
 
       {/* DATE */}
 

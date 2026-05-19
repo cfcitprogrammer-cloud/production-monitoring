@@ -47,6 +47,7 @@ export default function SFPieceForm() {
   const [items, setItems] = useState<CookingItem[]>([]);
 
   const { contains } = useFilter({ sensitivity: "base" });
+  const [site, setSite] = useState<string | null>(null);
 
   // ======================
   // FETCH
@@ -142,6 +143,7 @@ export default function SFPieceForm() {
         item_code: item.item_code,
         pcs: item.pcs,
         prod_id: `PROD-${prodDate}-${shift}`,
+        is_new_building: site === "sf2",
       }));
 
       const { error } = await supabase.from("sf_piece").insert(payload);
@@ -156,6 +158,7 @@ export default function SFPieceForm() {
       setItems([]);
       setSelectedKey(null);
       setPcs("");
+      setSite(null);
     } finally {
       setSubmitting(false);
     }
@@ -173,6 +176,33 @@ export default function SFPieceForm() {
       {/* ====================== */}
 
       <h2 className="text-xl font-semibold">Production Details</h2>
+
+      {/* SITE */}
+
+      <div>
+        <Label className="block mb-2">Site</Label>
+
+        <Select
+          className="w-[256px]"
+          selectedKey={site}
+          onSelectionChange={(key) => {
+            setSite(String(key));
+          }}
+        >
+          <Select.Trigger>
+            <Select.Value />
+            <Select.Indicator />
+          </Select.Trigger>
+
+          <Select.Popover>
+            <ListBox>
+              <ListBox.Item id="sf1">SF1</ListBox.Item>
+
+              <ListBox.Item id="sf2">SF2</ListBox.Item>
+            </ListBox>
+          </Select.Popover>
+        </Select>
+      </div>
 
       {/* DATE */}
 
