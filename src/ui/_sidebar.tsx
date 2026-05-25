@@ -23,7 +23,10 @@ export default function Sidebar() {
     { icon: Flame, label: "Bihon", url: "/bihon" },
     { icon: Cup, label: "Snackfood", url: "/snackfood" },
     { icon: Star, label: "Canton", url: "/canton" },
-    { icon: Box, label: "Sotanghon", url: "/sotanghon" },
+    { icon: Box, label: "KF Sotanghon", url: "/sotanghon" },
+    { icon: Box, label: "KF Hobe Express", url: "/kf-he" },
+    { icon: Box, label: "KF Canton", url: "/kf-canton" },
+    { icon: Box, label: "KF Snackfood", url: "/kf-snackfood" },
     { icon: GraphNode, label: "Summary", url: "/summary" },
   ];
 

@@ -135,7 +135,7 @@ const MODULES: Record<string, ModuleConfig[]> = {
       label: "Seasoning",
       table: "kf_seasoning",
       valueKey: "qty",
-      hasUnit: true,
+      hasUnit: false,
     },
     {
       key: "packing",
@@ -153,6 +153,54 @@ const MODULES: Record<string, ModuleConfig[]> = {
       hasUnit: false,
     },
   ],
+  kf_he: [
+    {
+      key: "packing",
+      label: "Packing",
+      table: "kf_he_packing",
+      valueKey: "qty",
+      hasUnit: false,
+    },
+    {
+      key: "fg",
+      label: "Finished Goods",
+      table: "kf_he_fg",
+      valueKey: "qty",
+      hasUnit: false,
+    },
+  ],
+  kf_canton: [
+    {
+      key: "packing",
+      label: "Packing",
+      table: "kf_canton_packing",
+      valueKey: "qty",
+      hasUnit: false,
+    },
+    {
+      key: "fg",
+      label: "Finished Goods",
+      table: "kf_canton_fg",
+      valueKey: "qty",
+      hasUnit: false,
+    },
+  ],
+  kf_sf: [
+    {
+      key: "packing",
+      label: "Packing",
+      table: "kf_sf_packing",
+      valueKey: "qty",
+      hasUnit: false,
+    },
+    {
+      key: "fg",
+      label: "Finished Goods",
+      table: "kf_sf_fg",
+      valueKey: "qty",
+      hasUnit: false,
+    },
+  ],
 };
 
 export default function ProductionSummary() {
@@ -161,7 +209,14 @@ export default function ProductionSummary() {
     () => new Date().toISOString().split("T")[0],
   );
   const [productType, setProductType] = useState<
-    "bihon" | "snackfood-old" | "snackfood-new" | "catmon" | "sotanghon"
+    | "bihon"
+    | "snackfood-old"
+    | "snackfood-new"
+    | "catmon"
+    | "sotanghon"
+    | "kf_sf"
+    | "kf_canton"
+    | "kf_he"
   >("bihon");
   const [selectedShift, setSelectedShift] = useState<string>("");
   const [dataMap, setDataMap] = useState<Record<string, Row[]>>({});
@@ -357,7 +412,10 @@ export default function ProductionSummary() {
 
               <option value="snackfood-new">Snackfood (New Building)</option>
               <option value="catmon">Canton</option>
-              <option value="sotanghon">Sotanghon</option>
+              <option value="sotanghon">Sotanghon (Kingsforth)</option>
+              <option value="kf_he">Hobe Express (Kingsforth)</option>
+              <option value="kf_canton">Canton (Kingsforth)</option>
+              <option value="kf_sf">Snackfood (Kingsforth)</option>
             </select>
           </div>
 
