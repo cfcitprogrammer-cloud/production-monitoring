@@ -114,6 +114,13 @@ const MODULES: Record<string, ModuleConfig[]> = {
       hasUnit: false,
     },
     {
+      key: "frying",
+      label: "Frying",
+      table: "catmon_frying_drying",
+      valueKey: "weight",
+      hasUnit: false,
+    },
+    {
       key: "packing",
       label: "Packing",
       table: "catmon_packing",
