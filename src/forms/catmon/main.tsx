@@ -12,6 +12,7 @@ import {
   toast,
 } from "@heroui/react";
 import { supabase } from "../../utils/supabase";
+import * as telegram from "../../utils/telegram";
 
 export default function CantonMainForm() {
   const allLines = ["Line 1", "Line 2", "Line 3", "Line 4", "Line 5"];
@@ -20,13 +21,13 @@ export default function CantonMainForm() {
   // FORM STATE
   // ======================
   const [prodDate, setProdDate] = useState("");
-  const [shift, setShift] = useState<string | null>(null); // Added for UID generation
+  const [shift, setShift] = useState<string | null>(null);
   const [flourUsed, setFlourUsed] = useState(0);
   const [totalInput, setTotalInput] = useState(0);
   const [scrap, setScrap] = useState(0);
   const [sweepings, setSweepings] = useState(0);
 
-  // Machine Trouble (Count)
+  // Machine Trouble
   const [machineTroublesCount, setMachineTroublesCount] = useState(0);
   const [troubleRemarks, setTroubleRemarks] = useState("");
 
@@ -42,35 +43,68 @@ export default function CantonMainForm() {
     selectedLines.length > 0 && selectedLines.length < allLines.length;
 
   // ======================
-  // SUBMIT
+  // SUBMIT HANDLER
   // ======================
   async function submitCantonForm(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!prodDate || !shift) {
+      toast.danger("Please complete all required fields (Date & Shift).");
+      return;
+    }
+
     setLoading(true);
 
+    // Transforms Array ["Line 1", "Line 3"] to clean string layout "Line 1, Line 3"
+    const formattedLinesString = selectedLines.join(", ");
+
     try {
-      const { error } = await supabase.from("canton_overview").insert([
-        {
-          // UID Generation: PROD-YYYY-MM-DD-SHIFT
-          uid: `PROD-${prodDate}-${shift}`,
-          prod_date: prodDate,
-          shift: shift,
-          flour_used: flourUsed,
-          total_input: totalInput,
-          scrap: scrap,
-          sweepings: sweepings,
-          machine_troubles: machineTroublesCount,
-          trouble_remarks: troubleRemarks,
-          lines_running: selectedLines,
-          additional_remarks: additionalRemarks,
-        },
-      ]);
+      const completePayload = {
+        uid: `PROD-${prodDate}-${shift}`,
+        prod_date: prodDate,
+        shift: shift,
+        flour_used: flourUsed,
+        total_input: totalInput,
+        scrap: scrap,
+        sweepings: sweepings,
+        machine_troubles: machineTroublesCount,
+        trouble_remarks: troubleRemarks,
+        lines_running: formattedLinesString,
+        additional_remarks: additionalRemarks,
+      };
 
-      if (error) throw error;
+      // 1. Commit to Supabase DB
+      const { error: dbError } = await supabase
+        .from("canton_overview")
+        .insert([completePayload]);
 
-      toast.success("Canton report submitted successfully!");
+      if (dbError) throw dbError;
 
-      // Reset Form
+      try {
+        // 3. Fire the structured Telegram Notification payload down to Google Apps Script
+        const tgResult = await telegram.submitProductionOverview({
+          ...completePayload,
+          dept: "CANTON",
+        } as any);
+
+        if (tgResult.success) {
+          toast.success(
+            "Overview submitted and broadcasted to Telegram successfully!",
+          );
+        } else {
+          toast.warning(
+            "Saved to DB, but Telegram notification failed to broadcast.",
+          );
+        }
+
+        toast.success("Canton report submitted and broadcasted to Telegram!");
+      } catch (tgError) {
+        console.error("Telegram Transmission Error:", tgError);
+        toast.warning("Saved to DB, but Telegram broadcast failed.");
+      }
+
+      // ======================
+      // RESET FORM FIELDS
+      // ======================
       setProdDate("");
       setShift(null);
       setFlourUsed(0);
@@ -82,7 +116,9 @@ export default function CantonMainForm() {
       setSelectedLines(["Line 1"]);
       setAdditionalRemarks("");
     } catch (error: any) {
-      toast.danger(error.message);
+      toast.danger(
+        error.message || "Failed to commit transaction to Database.",
+      );
     } finally {
       setLoading(false);
     }
@@ -123,7 +159,6 @@ export default function CantonMainForm() {
             <Select.Popover>
               <ListBox>
                 <ListBox.Item id="day">Day Shift</ListBox.Item>
-
                 <ListBox.Item id="night">Night Shift</ListBox.Item>
               </ListBox>
             </Select.Popover>

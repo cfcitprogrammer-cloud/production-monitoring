@@ -1,6 +1,6 @@
 import { Tabs } from "@heroui/react";
 import Page from "../ui/_page";
-import CantonMainForm from "../forms/canton/main";
+import CantonMainForm from "../forms/catmon/main";
 import CantonPackingForm from "../forms/canton/packing";
 
 export default function CantonPage() {

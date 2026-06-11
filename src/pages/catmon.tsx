@@ -4,6 +4,7 @@ import CatmonPackingForm from "../forms/catmon/packing";
 import CatmonMixingForm from "../forms/catmon/mixing";
 import CatmonFGForm from "../forms/catmon/fg";
 import CatmonFryingDryingForm from "../forms/catmon/fryingdrying";
+import CantonMainForm from "../forms/catmon/main";
 
 export default function CatmonPage() {
   return (
@@ -11,6 +12,10 @@ export default function CatmonPage() {
       <Tabs orientation="vertical">
         <Tabs.ListContainer>
           <Tabs.List aria-label="Options">
+            <Tabs.Tab id="overview">
+              Overview
+              <Tabs.Indicator />
+            </Tabs.Tab>
             <Tabs.Tab id="frying">
               Frying
               <Tabs.Indicator />
@@ -29,6 +34,9 @@ export default function CatmonPage() {
             </Tabs.Tab>
           </Tabs.List>
         </Tabs.ListContainer>
+        <Tabs.Panel className="pt-4" id="overview">
+          <CantonMainForm />
+        </Tabs.Panel>
         <Tabs.Panel className="pt-4" id="frying">
           <CatmonFryingDryingForm />
         </Tabs.Panel>
