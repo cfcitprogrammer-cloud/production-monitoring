@@ -222,8 +222,8 @@ export default function ProductionForm({
           type="date"
           value={prodDate}
           onChange={(e) => setProdDate(e.target.value)}
-          // min={new Date(Date.now() - 86400000).toLocaleDateString("sv-SE")}
-          // max={new Date().toLocaleDateString("sv-SE")}
+          min="2026-06-17"
+          max={new Date().toLocaleDateString("sv-SE")}
           required
         />
       </div>
