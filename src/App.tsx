@@ -8,6 +8,8 @@ import SotanghonPage from "./pages/sotanghon";
 import HEPage from "./pages/he";
 import KFCantonPage from "./pages/kf_canton";
 import KFSFPage from "./pages/kf_sf";
+import ManufacturingDashboard from "./pages/dashboard";
+// import CantonDashboardReport from "./pages/dashboard";
 
 function App() {
   return (
@@ -22,6 +24,7 @@ function App() {
       <Route path="/kf-snackfood" element={<KFSFPage />} />
       <Route path="/summary" element={<SummaryPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/" element={<ManufacturingDashboard />} />
     </Routes>
   );
 }

@@ -184,7 +184,11 @@ export default function BHfgForm() {
           value={prodDate}
           onChange={(e) => setProdDate(e.target.value)}
           required
-          min={new Date(Date.now() - 86400000).toLocaleDateString("sv-SE")}
+          min={
+            new Date().getHours() < 11
+              ? new Date(Date.now() - 86400000).toLocaleDateString("sv-SE") // Yesterday
+              : new Date().toLocaleDateString("sv-SE")
+          }
           max={new Date().toLocaleDateString("sv-SE")}
         />
       </div>
