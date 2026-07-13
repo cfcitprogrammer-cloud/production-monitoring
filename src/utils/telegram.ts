@@ -9,9 +9,16 @@ export interface BaseOverview {
   uid: string;
   prod_date: string;
   shift: string;
-  op_type?: string;
+  op_type?: string | null;
   trouble_remarks?: string;
   additional_remarks?: string;
+}
+
+export interface OutputItem {
+  item_code: string;
+  item_description: string;
+  quantity: number;
+  unit: string;
 }
 
 export interface BihonOverview extends BaseOverview {
@@ -22,7 +29,6 @@ export interface BihonOverview extends BaseOverview {
   trimmings?: number;
   rejects?: number;
   sweepings?: number;
-  // Make sure these are declared here so you don't even need 'as any'
   ip_hh?: number;
   ip_mm?: number;
   cp_hh?: number;
@@ -33,9 +39,13 @@ export interface BihonOverview extends BaseOverview {
 }
 
 export interface SFOverview extends BaseOverview {
+  total_batches?: number;
   machine_trouble: number;
-  fryers_running?: string;
+  fryers_running?: string | string[];
   is_new_building: boolean;
+  multi_weigher_output?: OutputItem[];
+  packing_output?: OutputItem[];
+  dept?: string;
 }
 
 export interface CantonOverview extends BaseOverview {
@@ -44,18 +54,30 @@ export interface CantonOverview extends BaseOverview {
   scrap?: number;
   sweepings?: number;
   lines_running?: string;
+  packing_output?: OutputItem[]; // <-- Added Canton Packing Output
+  dept?: string;
 }
 
 export type ProductionData = BihonOverview | SFOverview | CantonOverview;
 export type DeptType = "bihon" | "sf" | "canton";
 
+interface GASResponse {
+  status: "success" | "error";
+  message?: string;
+}
+
+export type TelegramSubmissionResult =
+  | { success: true; message: string }
+  | { success: false; error: string };
+
 // --- 2. THE HELPER FUNCTION ---
 
 const GAS_WEBAPP_URL =
-  "https://script.google.com/macros/s/AKfycby2w-k7ZxoZZn5H5_2QDmsJkUT3aJNDvWEbZ0RucKxzTz5Pb160fRxuBojOqpzQvZ0/exec";
+  "https://script.google.com/macros/s/AKfycby6WVeMn-9ZeO0EFHx44iGlALzeLYcXZpwigb792tMIFS4Fn2wPTXWokYnmtTZw7Zs/exec";
 
-export const submitProductionOverview = async (payload: ProductionData) => {
-  // Identify department based on unique schema keys
+export const submitProductionOverview = async (
+  payload: ProductionData,
+): Promise<TelegramSubmissionResult> => {
   let dept: DeptType = "bihon";
 
   if ("cornstarch_used" in payload) {
@@ -67,25 +89,23 @@ export const submitProductionOverview = async (payload: ProductionData) => {
   }
 
   try {
-    const response = await axios.post(
+    const response = await axios.post<GASResponse>(
       GAS_WEBAPP_URL,
-      {
+      JSON.stringify({
         type: dept,
         data: payload,
-      },
+      }),
       {
         headers: {
-          // Force text/plain content type because GAS handles text/plain payloads
-          // without triggering pre-flight CORS issues in some browser environments
           "Content-Type": "text/plain;charset=utf-8",
         },
       },
     );
 
-    // Because GAS always returns a 200 status even on execution errors,
-    // we safely check the custom status property returned by your code.
     if (response.data && response.data.status === "error") {
-      throw new Error(response.data.message);
+      throw new Error(
+        response.data.message || "Unknown error from Apps Script",
+      );
     }
 
     return {

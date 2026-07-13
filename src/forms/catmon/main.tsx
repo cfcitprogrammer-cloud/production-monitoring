@@ -1,4 +1,7 @@
-import { useState } from "react";
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import type { Key } from "@heroui/react";
 import {
   Input,
   Label,
@@ -10,9 +13,27 @@ import {
   ListBox,
   Spinner,
   toast,
+  Autocomplete,
+  SearchField,
+  Description,
 } from "@heroui/react";
 import { supabase } from "../../utils/supabase";
 import * as telegram from "../../utils/telegram";
+
+// Output Item Interface
+interface OutputItem {
+  item_code: string;
+  item_description: string;
+  quantity: number;
+  unit: string;
+}
+
+type CantonSku = {
+  id: number;
+  item_code: string;
+  item_description: string;
+  uom: string;
+};
 
 export default function CantonMainForm() {
   const allLines = ["Line 1", "Line 2", "Line 3", "Line 4", "Line 5"];
@@ -36,6 +57,87 @@ export default function CantonMainForm() {
   const [loading, setLoading] = useState(false);
 
   // ======================
+  // CANTON PACKING STATE
+  // ======================
+  const [cantonSkus, setCantonSkus] = useState<CantonSku[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [packingItems, setPackingItems] = useState<OutputItem[]>([]);
+  const [packSelectedKey, setPackSelectedKey] = useState<Key | null>(null);
+  const [packQty, setPackQty] = useState("");
+
+  // Fetch SKUs from 'canton_sku'
+  useEffect(() => {
+    const fetchCantonSkus = async () => {
+      let query = supabase
+        .from("catmon_sku")
+        .select("id, item_code, item_description, uom")
+        .order("item_code")
+        .limit(10);
+
+      if (searchTerm.trim()) {
+        query = query.or(
+          `item_code.ilike.%${searchTerm.trim()}%,item_description.ilike.%${searchTerm.trim()}%`,
+        );
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        toast.danger("Failed to load Canton SKUs: " + error.message);
+      } else if (data) {
+        setCantonSkus(data);
+      }
+    };
+
+    const delayDebounce = setTimeout(() => {
+      fetchCantonSkus();
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchTerm]);
+
+  const itemsList = useMemo(
+    () =>
+      cantonSkus.map((i, index) => ({
+        id: String(i.id ?? `item-${index}`),
+        itemCode: i.item_code || "Unknown Code",
+        name: i.item_code || "Unknown Code",
+        description: i.item_description || "",
+        uom: i.uom || "pcs",
+      })),
+    [cantonSkus],
+  );
+
+  // Packing List Handlers
+  const addPackingItem = () => {
+    if (!packSelectedKey || !packQty) return;
+
+    const found = itemsList.find((i) => i.id === String(packSelectedKey));
+    if (!found) return;
+
+    if (packingItems.some((i) => i.item_code === found.itemCode)) {
+      toast.info("Item code already added in Packing Output.");
+      return;
+    }
+
+    setPackingItems((prev) => [
+      ...prev,
+      {
+        item_code: found.itemCode,
+        item_description: found.description,
+        quantity: Number(packQty),
+        unit: found.uom,
+      },
+    ]);
+    setPackSelectedKey(null);
+    setPackQty("");
+  };
+
+  const removePackingItem = (index: number) => {
+    setPackingItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // ======================
   // CHECKBOX LOGIC
   // ======================
   const isAllSelected = selectedLines.length === allLines.length;
@@ -54,10 +156,10 @@ export default function CantonMainForm() {
 
     setLoading(true);
 
-    // Transforms Array ["Line 1", "Line 3"] to clean string layout "Line 1, Line 3"
     const formattedLinesString = selectedLines.join(", ");
 
     try {
+      // Complete Payload WITHOUT packing_output for Supabase
       const completePayload = {
         uid: `PROD-${prodDate}-${shift}`,
         prod_date: prodDate,
@@ -72,39 +174,32 @@ export default function CantonMainForm() {
         additional_remarks: additionalRemarks,
       };
 
-      // 1. Commit to Supabase DB
+      // 1. Commit to Supabase DB (Does NOT receive packing_output)
       const { error: dbError } = await supabase
         .from("canton_overview")
         .insert([completePayload]);
 
       if (dbError) throw dbError;
 
+      // 2. Fire payload WITH packing_output ONLY to Telegram
       try {
-        // 3. Fire the structured Telegram Notification payload down to Google Apps Script
         const tgResult = await telegram.submitProductionOverview({
           ...completePayload,
+          packing_output: packingItems, // Passed only here
           dept: "CANTON",
         } as any);
 
         if (tgResult.success) {
-          toast.success(
-            "Overview submitted and broadcasted to Telegram successfully!",
-          );
+          toast.success("Canton report submitted and broadcasted to Telegram!");
         } else {
-          toast.warning(
-            "Saved to DB, but Telegram notification failed to broadcast.",
-          );
+          toast.warning("Saved to DB, but Telegram broadcast failed.");
         }
-
-        toast.success("Canton report submitted and broadcasted to Telegram!");
       } catch (tgError) {
         console.error("Telegram Transmission Error:", tgError);
         toast.warning("Saved to DB, but Telegram broadcast failed.");
       }
 
-      // ======================
       // RESET FORM FIELDS
-      // ======================
       setProdDate("");
       setShift(null);
       setFlourUsed(0);
@@ -115,6 +210,7 @@ export default function CantonMainForm() {
       setTroubleRemarks("");
       setSelectedLines(["Line 1"]);
       setAdditionalRemarks("");
+      setPackingItems([]);
     } catch (error: any) {
       toast.danger(
         error.message || "Failed to commit transaction to Database.",
@@ -183,6 +279,93 @@ export default function CantonMainForm() {
             value={String(totalInput)}
             onChange={(e) => setTotalInput(Number(e.target.value))}
           />
+        </div>
+      </div>
+
+      {/* CANTON PACKING OUTPUT */}
+      <div className="p-4 border rounded-lg space-y-4">
+        <h2 className="text-xl font-semibold">Canton Packing Output</h2>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="flex-1 sm:w-[280px]">
+            <Label>Item Code</Label>
+            <Autocomplete
+              selectedKey={packSelectedKey}
+              onSelectionChange={(key) => setPackSelectedKey(key)}
+            >
+              <Autocomplete.Trigger>
+                <Autocomplete.Value />
+                <Autocomplete.ClearButton type="button" />
+                <Autocomplete.Indicator />
+              </Autocomplete.Trigger>
+              <Autocomplete.Popover>
+                <SearchField>
+                  <SearchField.Group>
+                    <SearchField.Input
+                      placeholder="Search SKU..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </SearchField.Group>
+                </SearchField>
+                <ListBox items={itemsList} selectionMode="single">
+                  {(item) => (
+                    <ListBox.Item
+                      id={item.id}
+                      textValue={item.name}
+                      isDisabled={packingItems.some(
+                        (i) => i.item_code === item.itemCode,
+                      )}
+                    >
+                      <div className="flex flex-col">
+                        <Label>{item.name}</Label>
+                        <Description>{item.description}</Description>
+                      </div>
+                    </ListBox.Item>
+                  )}
+                </ListBox>
+              </Autocomplete.Popover>
+            </Autocomplete>
+          </div>
+
+          <div className="w-full sm:w-[160px]">
+            <Label>Quantity</Label>
+            <Input
+              type="number"
+              value={packQty}
+              onChange={(e) => setPackQty(e.target.value)}
+            />
+          </div>
+
+          <Button type="button" onPress={addPackingItem}>
+            Add
+          </Button>
+        </div>
+
+        {/* CANTON PACKING LIST */}
+        <div className="space-y-2">
+          {packingItems.map((item, i) => (
+            <div
+              key={`canton-pack-${i}`}
+              className="flex justify-between items-center border p-3 rounded"
+            >
+              <div className="flex flex-col">
+                <span className="font-semibold text-sm">
+                  {item.item_code}
+                  {item.item_description ? ` — ${item.item_description}` : ""}
+                </span>
+                <span className="text-xs text-default-500">
+                  Qty: {item.quantity} {item.unit}
+                </span>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onPress={() => removePackingItem(i)}
+              >
+                Remove
+              </Button>
+            </div>
+          ))}
         </div>
       </div>
 
